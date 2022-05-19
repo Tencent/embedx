@@ -1,0 +1,3 @@
+[submodule "deepx_core"]
+	path = deepx_core
+	url = https://github.com/Tencent/deepx_core.git
