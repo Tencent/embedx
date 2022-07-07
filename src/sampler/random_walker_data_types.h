@@ -16,6 +16,8 @@
 
 namespace embedx {
 
+using meta_path_t = std::vector<uint16_t>;
+
 struct WalkerConfig {
   int thread_num = 1;
 
@@ -31,7 +33,7 @@ struct PrevInfo {
 
 struct WalkerInfo {
   // metapath
-  std::vector<uint16_t> meta_path;
+  meta_path_t meta_path;
   int walker_length;
 
   // dynamic

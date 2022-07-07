@@ -46,6 +46,7 @@ class DistStaticRandomWalker : public DistGSOp {
  private:
   void FillRequest(const vec_int_t& cur_nodes,
                    const std::vector<int>& walk_lens,
+                   const WalkerInfo& walker_info,
                    const std::vector<vec_int_t>& seqs,
                    const std::vector<int>& continuous_rpcs,
                    RpcSession* rpc_session);
