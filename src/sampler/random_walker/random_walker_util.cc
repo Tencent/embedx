@@ -19,8 +19,8 @@
 namespace embedx {
 namespace random_walker_util {
 
-bool FindRange(const vec_pair_t& context, uint16_t node_type,
-               std::pair<int, int>* range) {
+bool FindBound(const vec_pair_t& context, uint16_t node_type,
+               std::pair<int, int>* bound) {
   auto l = std::lower_bound(context.begin(), context.end(), node_type,
                             [](const pair_t& p, uint16_t node_type) {
                               return io_util::GetNodeType(p.first) < node_type;
@@ -32,26 +32,26 @@ bool FindRange(const vec_pair_t& context, uint16_t node_type,
   if (l == h) {
     return false;
   } else {
-    range->first = (int)(l - context.begin());
-    range->second = (int)(h - context.begin());
+    bound->first = (int)(l - context.begin());
+    bound->second = (int)(h - context.begin());
     return true;
   }
 }
 
 bool ContainsNode(const vec_pair_t& context, int_t node) {
   uint16_t node_type = io_util::GetNodeType(node);
-  std::pair<int, int> range;
-  if (!FindRange(context, node_type, &range)) {
+  std::pair<int, int> bound;
+  if (!FindBound(context, node_type, &bound)) {
     return false;
   }
-  int low = range.first;
-  int high = range.second;
+  int low = bound.first;
+  int high = bound.second;
   int mid;
   while (low < high) {
     mid = low + (high - low) / 2;
     context[mid].first < node ? low = mid + 1 : high = mid;
   }
-  return low < range.second && context[low].first == node;
+  return low < bound.second && context[low].first == node;
 }
 
 }  // namespace random_walker_util

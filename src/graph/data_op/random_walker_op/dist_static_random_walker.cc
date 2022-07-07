@@ -33,20 +33,20 @@ bool FinishRpc(const std::vector<int>& continuous_rpcs) {
 
 bool DistStaticRandomWalker::Run(const vec_int_t& cur_nodes,
                                  const std::vector<int>& walk_lens,
-                                 const WalkerInfo& /*walker_info*/,
+                                 const WalkerInfo& walker_info,
                                  std::vector<vec_int_t>* seqs) {
   // prepare
   seqs->clear();
   seqs->resize(cur_nodes.size());
   for (size_t i = 0; i < cur_nodes.size(); ++i) {
     (*seqs)[i].reserve((size_t)walk_lens[i]);
-    (*seqs)[i].emplace_back(cur_nodes[i]);
   }
 
   std::vector<int> continuous_rpcs(cur_nodes.size(), 1);
   RpcSession rpc_session;
   while (!FinishRpc(continuous_rpcs)) {
-    FillRequest(cur_nodes, walk_lens, *seqs, continuous_rpcs, &rpc_session);
+    FillRequest(cur_nodes, walk_lens, walker_info, *seqs, continuous_rpcs,
+                &rpc_session);
 
     // call rpc.
     auto rpc_type = StaticRandomWalkerRequest::rpc_type();
@@ -66,8 +66,8 @@ bool DistStaticRandomWalker::Run(const vec_int_t& cur_nodes,
 
 void DistStaticRandomWalker::FillRequest(
     const vec_int_t& cur_nodes, const std::vector<int>& walk_lens,
-    const std::vector<vec_int_t>& seqs, const std::vector<int>& continuous_rpcs,
-    RpcSession* rpc_session) {
+    const WalkerInfo& walker_info, const std::vector<vec_int_t>& seqs,
+    const std::vector<int>& continuous_rpcs, RpcSession* rpc_session) {
   // prepare
   rpc_session->Resize(shard_num_);
   for (int i = 0; i < shard_num_; ++i) {
@@ -75,6 +75,9 @@ void DistStaticRandomWalker::FillRequest(
     rpc_session->indices_list[i].clear();
     rpc_session->requests[i].cur_nodes.clear();
     rpc_session->requests[i].walk_lens.clear();
+    rpc_session->requests[i].walker_info.meta_path = walker_info.meta_path;
+    rpc_session->requests[i].walker_info.walker_length =
+        walker_info.walker_length;
     rpc_session->responses[i].seqs.clear();
   }
 
@@ -132,7 +135,7 @@ bool DistStaticRandomWalker::ParseResponse(const RpcSession& rpc_session,
       const auto& remote_seq = remote_seqs[j];
       cur_seq.insert(cur_seq.end(), remote_seq.begin(), remote_seq.end());
 
-      if (cur_seq.size() == 1u) {
+      if (cur_seq.empty()) {
         if (remote_seq.empty()) {
           DXERROR("Please check Isolated node: %" PRIu64, cur_seq[0]);
           return false;

@@ -15,6 +15,7 @@
 #include <algorithm>  // std::find_if
 #include <memory>     // std::unique_ptr
 #include <string>
+#include <vector>
 
 #include "src/common/data_types.h"
 #include "src/sampler/random_walker.h"
@@ -101,6 +102,39 @@ TEST_F(StaticRandomWalkerImplTest, Traverse_FrequencyNeighborSampler) {
       EXPECT_TRUE(it != context->end());
       pre_nodes[i] = seqs[i][j];
     }
+  }
+}
+
+TEST_F(StaticRandomWalkerImplTest, MetaPathTraverse) {
+  sampler_builder_ = NewSamplerBuilder(sampler_source_.get(),
+                                       SamplerBuilderEnum::NEIGHBOR_SAMPLER,
+                                       (int)SamplingEnum::UNIFORM, THREAD_NUM);
+  random_walker_ =
+      NewRandomWalker(sampler_builder_.get(), RandomWalkerEnum::STATIC);
+  EXPECT_TRUE(random_walker_);
+
+  vec_int_t cur_nodes = {0, 9};
+  std::vector<int> walk_lens = {3, 3};
+  WalkerInfo walker_info;
+  walker_info.meta_path = {0, 1};
+  walker_info.walker_length = 3;
+  std::vector<vec_int_t> seqs;
+
+  random_walker_->Traverse(cur_nodes, walk_lens, walker_info, &seqs, nullptr);
+  EXPECT_EQ(seqs.size(), cur_nodes.size());
+
+  for (const auto& seq : seqs) {
+    EXPECT_EQ(seq.size(), (size_t)0);
+  }
+
+  walker_info.meta_path = {0, 0, 1};
+  walker_info.walker_length = 3;
+
+  random_walker_->Traverse(cur_nodes, walk_lens, walker_info, &seqs, nullptr);
+  EXPECT_EQ(seqs.size(), cur_nodes.size());
+
+  for (const auto& seq : seqs) {
+    EXPECT_EQ(seq.size(), (size_t)1);
   }
 }
 

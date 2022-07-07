@@ -75,12 +75,14 @@ get_average_feature_flags() {
 FLAGS_walk_length=10
 FLAGS_dump_type=0
 FLAGS_epoch=1
+FLAGS_meta_path_config=""
 get_random_walker_flags() {
     local flags=""
     local flags="$(get_graph_flags)"
     local flags="${flags} --walk_length=${FLAGS_walk_length}"
     local flags="${flags} --dump_type=${FLAGS_dump_type}"
     local flags="${flags} --epoch=${FLAGS_epoch}"
+    local flags="${flags} --meta_path_config=${FLAGS_meta_path_config}"
     echo "${flags}"
 }
 

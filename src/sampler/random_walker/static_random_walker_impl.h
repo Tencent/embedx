@@ -38,6 +38,16 @@ class StaticRandomWalkerImpl : public RandomWalkerImpl {
                 PrevInfo* prev_info) const override;
 
  private:
+  void Traverse(const vec_int_t& cur_nodes, const std::vector<int>& walk_lens,
+                std::vector<vec_int_t>* seqs) const;
+  void MetaPathTraverse(const vec_int_t& cur_nodes,
+                        const std::vector<int>& walk_lens,
+                        const WalkerInfo& walker_info,
+                        std::vector<vec_int_t>* seqs) const;
+  bool MetaPathNext(const meta_path_t& meta_path, int_t cur_node, int cur_index,
+                    int_t* next_node) const;
+
+ private:
   explicit StaticRandomWalkerImpl(const SamplerBuilder* sampler_builder)
       : neighbor_sampler_builder_(*sampler_builder) {}
 };

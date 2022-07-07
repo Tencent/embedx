@@ -17,8 +17,8 @@
 namespace embedx {
 namespace random_walker_util {
 
-bool FindRange(const vec_pair_t& context, uint16_t node_type,
-               std::pair<int, int>* range);
+bool FindBound(const vec_pair_t& context, uint16_t node_type,
+               std::pair<int, int>* bound);
 
 bool ContainsNode(const vec_pair_t& context, int_t node);
 

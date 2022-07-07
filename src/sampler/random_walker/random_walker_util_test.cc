@@ -14,7 +14,7 @@
 #include <deepx_core/tensor/ll_tensor.h>
 #include <gtest/gtest.h>
 
-#include <utility>  //std::unique_ptr, std::pair
+#include <utility>  // std::unique_ptr, std::pair
 
 #include "src/common/data_types.h"
 
@@ -40,23 +40,23 @@ class RandomWalkerUtilTest : public ::testing::Test {
   }
 };
 
-TEST_F(RandomWalkerUtilTest, FindRange) {
-  std::pair<int, int> range;
-  EXPECT_FALSE(FindRange(context_, 0, &range));
-  EXPECT_FALSE(FindRange(context_, 2, &range));
-  EXPECT_FALSE(FindRange(context_, 6, &range));
+TEST_F(RandomWalkerUtilTest, FindBound) {
+  std::pair<int, int> bound;
+  EXPECT_FALSE(FindBound(context_, 0, &bound));
+  EXPECT_FALSE(FindBound(context_, 2, &bound));
+  EXPECT_FALSE(FindBound(context_, 6, &bound));
 
-  EXPECT_TRUE(FindRange(context_, 1, &range));
-  EXPECT_EQ(range.first, 0);
-  EXPECT_EQ(range.second, 2);
+  EXPECT_TRUE(FindBound(context_, 1, &bound));
+  EXPECT_EQ(bound.first, 0);
+  EXPECT_EQ(bound.second, 2);
 
-  EXPECT_TRUE(FindRange(context_, 3, &range));
-  EXPECT_EQ(range.first, 2);
-  EXPECT_EQ(range.second, 4);
+  EXPECT_TRUE(FindBound(context_, 3, &bound));
+  EXPECT_EQ(bound.first, 2);
+  EXPECT_EQ(bound.second, 4);
 
-  EXPECT_TRUE(FindRange(context_, 5, &range));
-  EXPECT_EQ(range.first, 6);
-  EXPECT_EQ(range.second, 7);
+  EXPECT_TRUE(FindBound(context_, 5, &bound));
+  EXPECT_EQ(bound.first, 6);
+  EXPECT_EQ(bound.second, 7);
 }
 
 TEST_F(RandomWalkerUtilTest, ContainsNode) {
