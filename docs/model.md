@@ -122,7 +122,7 @@
 
 - criteo 数据集
 
-  - 链接：<https://labs.criteo.com/2014/02/kaggle-display-advertising-challenge-dataset>
+  - 链接：<https://www.kaggle.com/c/criteo-display-ad-challenge/data>
 
 ### 评测结果
 

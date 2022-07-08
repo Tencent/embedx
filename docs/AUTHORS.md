@@ -4,7 +4,7 @@
 | -------------- | --------------------------- |
 | longsail       | yuanhang.nju@gmail.com      |
 | ccsquare       | chengchuancoder@gmail.com   |
-| succ9420       | chunchen.scur@gmail.com     |  
+| succ9420       | chunchen.scut@gmail.com     |
 | Chowy          | zhouyongnju@gmail.com       |
 | tinkle1129     | shutingnjupt@gmail.com      |
 | yuanqingsunny  | yuanqingsunny1180@gmail.com |
