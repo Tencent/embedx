@@ -1,5 +1,5 @@
 faiss-cpu==1.7.1
 networkx==1.11
-numpy==1.20.1
+numpy==1.22
 scipy==1.6.2
 sklearn==0.0
