@@ -10,9 +10,8 @@
 //
 
 #include <deepx_core/common/misc.h>
+#include <deepx_core/common/stream.h>
 #include <gflags/gflags.h>
-
-#include <string>
 
 #include "src/graph/graph_config.h"
 #include "src/graph/server/dist_graph_server.h"
@@ -39,14 +38,8 @@ void SetGraphConfig(GraphConfig* graph_config) {
   graph_config->set_cache_thld(FLAGS_cache_thld);
   graph_config->set_cache_type(FLAGS_cache_type);
   graph_config->set_max_node_per_rpc(FLAGS_max_node_per_rpc);
-}
 
-void TouchHDFSFile(const std::string& out, int shard_id) {
-  std::string out_file = out + "/_SUCCESS" + std::to_string(shard_id);
-  DXINFO("Touch 'success' file: %s.", out_file.c_str());
-  deepx_core::AutoOutputFileStream os;
-  DXCHECK_THROW(os.Open(out_file));
-  os.Close();
+  graph_config->set_success_out(FLAGS_success_out);
 }
 
 /************************************************************************/
@@ -72,6 +65,15 @@ void CheckFlags() {
   DXCHECK(FLAGS_cache_type == 0 || FLAGS_cache_type == 1 ||
           FLAGS_cache_type == 2);
   DXCHECK(FLAGS_max_node_per_rpc > 0);
+
+  if (!FLAGS_success_out.empty()) {
+    deepx_core::AutoFileSystem fs;
+    deepx_core::CanonicalizePath(&FLAGS_success_out);
+    DXCHECK(!FLAGS_success_out.empty());
+    DXCHECK(fs.Open(FLAGS_success_out));
+    DXCHECK(!deepx_core::IsStdinStdoutPath(FLAGS_success_out));
+    (void)deepx_core::AutoFileSystem::MakeDir(FLAGS_success_out);
+  }
 }
 
 int main(int argc, char* argv[]) {
@@ -85,10 +87,6 @@ int main(int argc, char* argv[]) {
 
   DistGraphServer server;
   DXCHECK(server.Start(graph_config));
-
-  if (!FLAGS_success_out.empty()) {
-    TouchHDFSFile(FLAGS_success_out, FLAGS_gs_shard_id);
-  }
 
   return 0;
 }
