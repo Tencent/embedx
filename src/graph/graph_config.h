@@ -41,6 +41,8 @@ class GraphConfig {
   double cache_thld_ = 0.0;
   int max_node_per_rpc_ = 2000;
 
+  std::string success_out_;
+
  public:
   // data
   const std::string& node_graph() const noexcept { return node_graph_; }
@@ -67,6 +69,9 @@ class GraphConfig {
   int cache_type() const noexcept { return cache_type_; }
   double cache_thld() const noexcept { return cache_thld_; }
   int max_node_per_rpc() const noexcept { return max_node_per_rpc_; }
+
+  // output
+  const std::string& success_out() const noexcept { return success_out_; }
 
  public:
   // data
@@ -104,6 +109,11 @@ class GraphConfig {
   void set_cache_thld(double cache_thld) noexcept { cache_thld_ = cache_thld; }
   void set_max_node_per_rpc(int max_node_per_rpc) noexcept {
     max_node_per_rpc_ = max_node_per_rpc;
+  }
+
+  // output
+  void set_success_out(const std::string& success_out) noexcept {
+    success_out_ = success_out;
   }
 };
 

@@ -12,7 +12,10 @@
 #include "src/graph/server/dist_graph_server.h"
 
 #include <deepx_core/common/str_util.h>
+#include <deepx_core/common/stream.h>
 #include <deepx_core/dx_log.h>
+
+#include <string>
 
 #include "src/graph/data_op/cache_node_lookuper_op/cache_node_lookuper.h"
 #include "src/graph/data_op/context_lookuper_op/context_lookuper.h"
@@ -29,6 +32,23 @@
 #include "src/graph/graph_config.h"
 
 namespace embedx {
+namespace {
+
+void TouchSuccessFile(const GraphConfig& config) {
+  if (config.success_out().empty()) {
+    DXINFO("'success_out' directory is empty.");
+    return;
+  }
+
+  std::string out_file =
+      config.success_out() + "/_SUCCESS" + std::to_string(config.shard_id());
+  DXINFO("Touch 'success_out' file: %s.", out_file.c_str());
+  deepx_core::AutoOutputFileStream os;
+  DXCHECK_THROW(os.Open(out_file));
+  os.Close();
+}
+
+}  // namespace
 
 using ::embedx::graph_op::LocalGSOp;
 using ::embedx::graph_op::LocalGSOpFactory;
@@ -140,6 +160,7 @@ bool DistGraphServer::Start(const GraphConfig& config) {
   }
 
   RegisterRequestHandler();
+  TouchSuccessFile(config);
   rpc_server_.Run();
   return true;
 }
