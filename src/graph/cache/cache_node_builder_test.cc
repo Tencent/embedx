@@ -38,26 +38,26 @@ class CacheNodeBuilderTest : public ::testing::Test {
 };
 
 TEST_F(CacheNodeBuilderTest, Build) {
-  cache_node_builder_ = CacheNodeBuilder::Create(graph_.get(), 0, -1.0);
+  cache_node_builder_ = CacheNodeBuilder::Create(graph_.get(), 0, -1.0, 2);
   EXPECT_TRUE(cache_node_builder_ == nullptr);
-  cache_node_builder_ = CacheNodeBuilder::Create(graph_.get(), 4, 1.0);
+  cache_node_builder_ = CacheNodeBuilder::Create(graph_.get(), 4, 1.0, 2);
   EXPECT_TRUE(cache_node_builder_ == nullptr);
 }
 
 TEST_F(CacheNodeBuilderTest, RandomCache) {
-  cache_node_builder_ = CacheNodeBuilder::Create(graph_.get(), 0, 1.0);
+  cache_node_builder_ = CacheNodeBuilder::Create(graph_.get(), 0, 1.0, 2);
   EXPECT_TRUE(cache_node_builder_ != nullptr);
   EXPECT_EQ(cache_node_builder_->nodes()->size(), 13u);
 }
 
 TEST_F(CacheNodeBuilderTest, DegreeCache) {
-  cache_node_builder_ = CacheNodeBuilder::Create(graph_.get(), 1, 0.5);
+  cache_node_builder_ = CacheNodeBuilder::Create(graph_.get(), 1, 0.5, 2);
   EXPECT_TRUE(cache_node_builder_ != nullptr);
   EXPECT_EQ(cache_node_builder_->nodes()->size(), 6u);
 }
 
 TEST_F(CacheNodeBuilderTest, ImportanceCache) {
-  cache_node_builder_ = CacheNodeBuilder::Create(graph_.get(), 2, 0.5);
+  cache_node_builder_ = CacheNodeBuilder::Create(graph_.get(), 2, 0.5, 2);
   EXPECT_TRUE(cache_node_builder_ != nullptr);
   EXPECT_EQ(cache_node_builder_->nodes()->size(), 13u);
 }
