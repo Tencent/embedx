@@ -37,7 +37,8 @@ class CacheNodeLookuper : public LocalGSOp {
   bool Init(const LocalGSOpResource* resource) override {
     builder_ = CacheNodeBuilder::Create(resource->graph(),
                                         resource->graph_config().cache_type(),
-                                        resource->graph_config().cache_thld());
+                                        resource->graph_config().cache_thld(),
+                                        resource->graph_config().thread_num());
     return builder_ != nullptr;
   }
 };

@@ -15,38 +15,45 @@
 
 #include <algorithm>  // std::stable_sort
 #include <cinttypes>  // PRIu64
-#include <utility>    // std::pair
+#include <mutex>
+#include <utility>  // std::pair
 #include <vector>
 
 #include "src/common/random.h"
+#include "src/io/io_util.h"
 
 namespace embedx {
-namespace {
 
-bool RandomCache(const vec_int_t& nodes, double percent,
-                 vec_int_t* cached_nodes) {
-  cached_nodes->clear();
+bool CacheNodeBuilder::RandomCache(const vec_int_t& nodes, int thread_id) {
+  DXINFO("Thread: %d is processing...", thread_id);
+  if (nodes.size() * cache_thld_ < 1) {
+    DXERROR("Need cache nodes >= 1, got %d.",
+            (int)(nodes.size() * cache_thld_));
+    return false;
+  }
   for (auto& node : nodes) {
-    if (ThreadLocalRandom() < percent) {
-      cached_nodes->emplace_back(node);
+    if (ThreadLocalRandom() < cache_thld_) {
+      std::lock_guard<std::mutex> guard(mtx_);
+      nodes_.emplace_back(node);
     }
   }
-  return !cached_nodes->empty();
+  DXINFO("Done.");
+  return true;
 }
 
-bool DegreeCache(const InMemoryGraph* graph, const vec_int_t& nodes,
-                 double percent, vec_int_t* cached_nodes) {
-  cached_nodes->clear();
-
+bool CacheNodeBuilder::DegreeCache(const vec_int_t& nodes, int thread_id) {
+  DXINFO("Thread: %d is processing...", thread_id);
   std::vector<std::pair<int_t, int_t>> tmp_out_degrees;
-  int count = nodes.size() * percent;
-
+  int count = nodes.size() * cache_thld_;
+  if (count < 1) {
+    DXERROR("Need cache nodes count >= 1, got %d.", count);
+    return false;
+  }
   for (auto& node : nodes) {
-    int tmp_out_degree = graph->GetOutDegree(node);
+    int tmp_out_degree = graph_->GetOutDegree(node);
     if (tmp_out_degree < 0) {
-      DXERROR("Output degree of node: %" PRIu64
-              " must be greater than or equal to 0.",
-              node);
+      DXERROR("Need node: %" PRIu64 " out degree >= 0, got %d.", node,
+              tmp_out_degree);
       return false;
     }
     tmp_out_degrees.emplace_back(std::make_pair(node, tmp_out_degree));
@@ -59,34 +66,37 @@ bool DegreeCache(const InMemoryGraph* graph, const vec_int_t& nodes,
       });
 
   for (int i = 0; i < count; ++i) {
-    cached_nodes->emplace_back(tmp_out_degrees[i].first);
+    std::lock_guard<std::mutex> guard(mtx_);
+    nodes_.emplace_back(tmp_out_degrees[i].first);
   }
-
-  return !cached_nodes->empty();
+  DXINFO("Done.");
+  return true;
 }
 
-bool ImportanceCache(const InMemoryGraph* graph, const vec_int_t& nodes,
-                     double importance_factor, vec_int_t* cached_nodes) {
-  cached_nodes->clear();
-
+bool CacheNodeBuilder::ImportanceCache(const vec_int_t& nodes, int thread_id) {
+  DXINFO("Thread: %d is processing...", thread_id);
   for (auto& node : nodes) {
-    int tmp_out_degree = graph->GetOutDegree(node);
-    int tmp_in_degree = graph->GetInDegree(node);
+    int tmp_out_degree = graph_->GetOutDegree(node);
+    int tmp_in_degree = graph_->GetInDegree(node);
     DXCHECK(tmp_out_degree >= 0 && tmp_in_degree >= 0);
     float_t node_importance =
         (tmp_in_degree + 1) / ((tmp_out_degree + 1) * 1.0);
-    if (node_importance > importance_factor) {
-      cached_nodes->emplace_back(node);
+    if (node_importance <= 0) {
+      DXERROR("Need node:%" PRIu64 " importance factor > 0, got %f.", node,
+              node_importance);
+      return false;
+    }
+    if (node_importance > cache_thld_) {
+      std::lock_guard<std::mutex> guard(mtx_);
+      nodes_.emplace_back(node);
     }
   }
-
-  return !cached_nodes->empty();
+  DXINFO("Done.");
+  return true;
 }
 
-}  // namespace
-
 bool CacheNodeBuilder::Build(const InMemoryGraph* graph, int cache_type,
-                             double cache_thld) {
+                             double cache_thld, int thread_num) {
   nodes_.clear();
   if (cache_thld == 0) {
     DXINFO("Cache_thld == 0, cache was not enabled.");
@@ -95,16 +105,33 @@ bool CacheNodeBuilder::Build(const InMemoryGraph* graph, int cache_type,
     DXERROR("Need cache_thld > 0, got cache_thld: %f.", cache_thld);
     return false;
   }
+  cache_thld_ = cache_thld;
+  graph_ = graph;
 
-  auto& node_keys = graph->node_keys();
+  auto& nodes = graph->node_keys();
   DXINFO("Cache_type = %d,cache_thld = %f.", cache_type, cache_thld);
 
   if (cache_type == 0) {
-    return RandomCache(node_keys, cache_thld, &nodes_);
+    return io_util::ParallelProcess<int_t>(
+        nodes,
+        [this](const vec_int_t& nodes, int thread_id) {
+          return RandomCache(nodes, thread_id);
+        },
+        thread_num);
   } else if (cache_type == 1) {
-    return DegreeCache(graph, node_keys, cache_thld, &nodes_);
+    return io_util::ParallelProcess<int_t>(
+        nodes,
+        [this](const vec_int_t& nodes, int thread_id) {
+          return DegreeCache(nodes, thread_id);
+        },
+        thread_num);
   } else if (cache_type == 2) {
-    return ImportanceCache(graph, node_keys, cache_thld, &nodes_);
+    return io_util::ParallelProcess<int_t>(
+        nodes,
+        [this](const vec_int_t& nodes, int thread_id) {
+          return ImportanceCache(nodes, thread_id);
+        },
+        thread_num);
   } else {
     DXERROR("Need type: random(0) || degree(1) || importance(2), got type: %d.",
             (int)cache_type);
@@ -114,11 +141,12 @@ bool CacheNodeBuilder::Build(const InMemoryGraph* graph, int cache_type,
 }
 
 std::unique_ptr<CacheNodeBuilder> CacheNodeBuilder::Create(
-    const InMemoryGraph* graph, int cache_type, double cache_thld) {
+    const InMemoryGraph* graph, int cache_type, double cache_thld,
+    int thread_num) {
   std::unique_ptr<CacheNodeBuilder> cache_node_builder;
   cache_node_builder.reset(new CacheNodeBuilder());
 
-  if (!cache_node_builder->Build(graph, cache_type, cache_thld)) {
+  if (!cache_node_builder->Build(graph, cache_type, cache_thld, thread_num)) {
     DXERROR("Failed to build cache node builder.");
     cache_node_builder.reset();
   }
