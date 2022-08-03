@@ -51,6 +51,7 @@ DEFINE_bool(
 DEFINE_bool(ts_enable, false, "Enable timestamp.");
 DEFINE_uint64(ts_now, 0, "Timestamp of now.");
 DEFINE_uint64(ts_expire_threshold, 0, "Timestamp expiration threshold.");
+DEFINE_uint64(freq_filter_threshold, 0, "Frequency filter threshold.");
 DEFINE_int32(verbose, 1, "Verbose level: 0-10(role is wk).");
 DEFINE_int32(seed, 9527, "Seed of random engine(role is ps).");
 DEFINE_int32(target_type, 2, "0 for loss, 1 for prob, 2 for emb.");
@@ -200,6 +201,10 @@ void CheckFlags() {
                     (google::uint64)
                         std::numeric_limits<deepx_core::DataType::ts_t>::max());
     }
+
+    DXCHECK_THROW(FLAGS_freq_filter_threshold <=
+                  (google::uint64)
+                      std::numeric_limits<deepx_core::DataType::freq_t>::max());
   }
 }
 

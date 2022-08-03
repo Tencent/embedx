@@ -40,6 +40,7 @@ FLAGS_batch=32
 FLAGS_ts_enable=false
 FLAGS_ts_now=0
 FLAGS_ts_expire_threshold=0
+FLAGS_freq_filter_threshold=0
 FLAGS_verbose=1
 FLAGS_seed=9527
 FLAGS_target_type=2
@@ -72,6 +73,7 @@ get_trainer_flags() {
     local flags="${flags} --ts_enable=${FLAGS_ts_enable}"
     local flags="${flags} --ts_now=${FLAGS_ts_now}"
     local flags="${flags} --ts_expire_threshold=${FLAGS_ts_expire_threshold}"
+    local flags="${flags} --freq_filter_threshold=${FLAGS_freq_filter_threshold}"
     local flags="${flags} --verbose=${FLAGS_verbose}"
     local flags="${flags} --seed=${FLAGS_seed}"
     local flags="${flags} --target_type=${FLAGS_target_type}"

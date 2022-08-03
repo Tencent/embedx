@@ -59,6 +59,7 @@ DEFINE_int32(batch, 64, "Batch size.");
 DEFINE_bool(ts_enable, false, "Enable timestamp.");
 DEFINE_uint64(ts_now, 0, "Timestamp of now.");
 DEFINE_uint64(ts_expire_threshold, 0, "Timestamp expiration threshold.");
+DEFINE_uint64(freq_filter_threshold, 0, "Frequency filter threshold.");
 DEFINE_int32(verbose, 1, "Verbose level: 0-10.");
 DEFINE_int32(seed, 9527, "Seed of random engine.");
 DEFINE_int32(target_type, 0, "0, for loss, 1 for prob, 2 for emb.");
@@ -292,6 +293,10 @@ bool Trainer::InitTrainerContext(TrainerContext* context) const {
 
   std::string target_name = graph_.target(FLAGS_target_type).name();
 
+  if (FLAGS_freq_filter_threshold > 0) {
+    context->set_freq_filter_threshold(
+        (deepx_core::DataType::freq_t)FLAGS_freq_filter_threshold);
+  }
   context->set_verbose(FLAGS_verbose);
   context->set_target_name(target_name);
   context->set_instance_reader_creator(instance_reader_creator);
@@ -393,6 +398,11 @@ bool TrainerShard::Init() {
             (deepx_core::DataType::ts_t)FLAGS_ts_now,
             (deepx_core::DataType::ts_t)FLAGS_ts_expire_threshold));
       }
+
+      if (FLAGS_freq_filter_threshold > 0) {
+        DXCHECK(model_shards_[i].InitFreqStore(
+            (deepx_core::DataType::freq_t)FLAGS_freq_filter_threshold));
+      }
     } else {
       DXCHECK(model_shards_[i].LoadModel(FLAGS_in_model));
       DXCHECK(model_shards_[i].LoadOptimizer(FLAGS_in_model,
@@ -404,6 +414,15 @@ bool TrainerShard::Init() {
           DXCHECK(model_shards_[i].InitTSStore(
               (deepx_core::DataType::ts_t)FLAGS_ts_now,
               (deepx_core::DataType::ts_t)FLAGS_ts_expire_threshold));
+        }
+      }
+
+      if (FLAGS_freq_filter_threshold > 0) {
+        if (!model_shards_[i].LoadFreqStore(
+                FLAGS_in_model,
+                (deepx_core::DataType::freq_t)FLAGS_freq_filter_threshold)) {
+          DXCHECK(model_shards_[i].InitFreqStore(
+              (deepx_core::DataType::freq_t)FLAGS_freq_filter_threshold));
         }
       }
     }
@@ -453,6 +472,10 @@ void TrainerShard::Save() {
 
     if (FLAGS_ts_enable) {
       DXCHECK_THROW(model_shards_[i].SaveTSStore(FLAGS_out_model));
+    }
+
+    if (FLAGS_freq_filter_threshold > 0) {
+      DXCHECK_THROW(model_shards_[i].SaveFreqStore(FLAGS_out_model));
     }
 
     if (!FLAGS_out_model_text.empty()) {
@@ -523,6 +546,10 @@ void CheckFlags() {
         FLAGS_ts_expire_threshold <=
         (google::uint64)std::numeric_limits<deepx_core::DataType::ts_t>::max());
   }
+
+  DXCHECK(
+      FLAGS_freq_filter_threshold <=
+      (google::uint64)std::numeric_limits<deepx_core::DataType::freq_t>::max());
 
   DXCHECK(FLAGS_verbose >= 0);
   DXCHECK(FLAGS_target_type == 0);

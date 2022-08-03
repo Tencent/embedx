@@ -30,6 +30,7 @@ namespace embedx {
 /************************************************************************/
 class TrainerContext : public deepx_core::DataType {
  protected:
+  freq_t freq_filter_threshold_ = 0;
   int verbose_ = 0;
   std::string target_name_;
   int target_type_ = 0;
@@ -46,6 +47,9 @@ class TrainerContext : public deepx_core::DataType {
   double tread_loss_weight_ = 0;
 
  public:
+  void set_freq_filter_threshold(freq_t freq_filter_threshold) noexcept {
+    freq_filter_threshold_ = freq_filter_threshold;
+  }
   void set_verbose(int verbose) noexcept { verbose_ = verbose; }
   void set_target_name(const std::string& target_name) noexcept {
     target_name_ = target_name;

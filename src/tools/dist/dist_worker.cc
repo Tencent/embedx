@@ -17,6 +17,7 @@
 #include <deepx_core/common/profile_util.h>
 #include <deepx_core/common/stream.h>
 #include <deepx_core/dx_log.h>
+#include <deepx_core/graph/freq_store.h>
 #include <deepx_core/graph/graph.h>
 #include <deepx_core/graph/model_shard.h>
 #include <deepx_core/graph/tensor_map.h>
@@ -139,6 +140,10 @@ void TrainerContextDist::PredictBatch() {
 
 void TrainerContextDist::Pull() {
   op_context_->GetPullRequest(&pull_request_);
+  if (freq_filter_threshold_ > 0 && FLAGS_is_train) {
+    deepx_core::FreqStore::GetIdFreqMap(op_context_->inst(),
+                                        &pull_request_.id_freq_map);
+  }
   pull_request_.is_train = FLAGS_is_train;
   local_model_shard_->SplitPullRequest(pull_request_, &pull_requests_, &aux1_);
 
@@ -308,6 +313,10 @@ bool TrainerDist::Init() {
     return instance_reader;
   };
 
+  if (FLAGS_freq_filter_threshold > 0) {
+    context_.set_freq_filter_threshold(
+        (deepx_core::DataType::freq_t)FLAGS_freq_filter_threshold);
+  }
   context_.set_verbose(FLAGS_verbose);
   context_.set_target_name(target_name);
   context_.set_target_type(FLAGS_target_type);

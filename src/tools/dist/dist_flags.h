@@ -44,6 +44,7 @@ DECLARE_bool(shuffle);
 DECLARE_bool(ts_enable);
 DECLARE_uint64(ts_now);
 DECLARE_uint64(ts_expire_threshold);
+DECLARE_uint64(freq_filter_threshold);
 DECLARE_int32(verbose);
 DECLARE_int32(seed);
 DECLARE_int32(target_type);
