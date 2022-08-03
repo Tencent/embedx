@@ -14,6 +14,7 @@
 #include <deepx_core/common/any_map.h>
 #include <deepx_core/common/misc.h>
 #include <deepx_core/common/profile_util.h>
+#include <deepx_core/graph/freq_store.h>
 
 #include <chrono>
 #include <cstdlib>
@@ -321,6 +322,10 @@ void TrainerContextShard::WaitForCompletion() {
 
 void TrainerContextShard::Pull(int is_train) {
   op_context_->GetPullRequest(&pull_request_);
+  if (freq_filter_threshold_ > 0 && is_train) {
+    deepx_core::FreqStore::GetIdFreqMap(op_context_->inst(),
+                                        &pull_request_.id_freq_map);
+  }
   pull_request_.is_train = is_train;
   local_model_shard_->SplitPullRequest(pull_request_, &pull_requests_, &aux1_);
 

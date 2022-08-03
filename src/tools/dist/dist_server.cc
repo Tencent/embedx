@@ -94,6 +94,11 @@ bool RankParamServer::Init() {
             (deepx_core::DataType::ts_t)FLAGS_ts_now,
             (deepx_core::DataType::ts_t)FLAGS_ts_expire_threshold));
       }
+
+      if (FLAGS_freq_filter_threshold > 0) {
+        DXCHECK_THROW(model_shard_.InitFreqStore(
+            (deepx_core::DataType::freq_t)FLAGS_freq_filter_threshold));
+      }
     } else {
       DXCHECK_THROW(model_shard_.LoadModel(FLAGS_in_model));
       if (FLAGS_is_train) {
@@ -106,6 +111,15 @@ bool RankParamServer::Init() {
             DXCHECK_THROW(model_shard_.InitTSStore(
                 (deepx_core::DataType::ts_t)FLAGS_ts_now,
                 (deepx_core::DataType::ts_t)FLAGS_ts_expire_threshold));
+          }
+        }
+
+        if (FLAGS_freq_filter_threshold > 0) {
+          if (!model_shard_.LoadFreqStore(
+                  FLAGS_in_model,
+                  (deepx_core::DataType::freq_t)FLAGS_freq_filter_threshold)) {
+            DXCHECK_THROW(model_shard_.InitFreqStore(
+                (deepx_core::DataType::freq_t)FLAGS_freq_filter_threshold));
           }
         }
       }
@@ -190,6 +204,10 @@ void RankParamServer::OnModelSaveRequest(conn_t /*conn*/) {
 
   if (FLAGS_ts_enable) {
     DXCHECK_THROW(model_shard_.SaveTSStore(FLAGS_out_model));
+  }
+
+  if (FLAGS_freq_filter_threshold > 0) {
+    DXCHECK_THROW(model_shard_.SaveFreqStore(FLAGS_out_model));
   }
 
   if (!FLAGS_out_model_text.empty()) {
