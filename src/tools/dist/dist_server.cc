@@ -124,6 +124,16 @@ bool RankParamServer::Init() {
         }
       }
     }
+    if (!FLAGS_warmup_model.empty()) {
+      DXCHECK_THROW(model_shard_.WarmupModel(FLAGS_warmup_model));
+      DXCHECK_THROW(model_shard_.WarmupOptimizer(FLAGS_warmup_model));
+      if (FLAGS_ts_enable) {
+        (void)model_shard_.WarmupTSStore(FLAGS_warmup_model);
+      }
+      if (FLAGS_freq_filter_threshold > 0) {
+        (void)model_shard_.WarmupFreqStore(FLAGS_warmup_model);
+      }
+    }
 
   } else {
     DXCHECK_THROW(deepx_core::LoadGraph(FLAGS_in_model, &graph_));

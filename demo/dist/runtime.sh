@@ -35,6 +35,7 @@ FLAGS_optimizer_config=""
 FLAGS_epoch=1
 FLAGS_batch=32
 FLAGS_in_model=""
+FLAGS_warmup_model=""
 FLAGS_in=""
 FLAGS_pretrain_path=""
 FLAGS_item_feature=""
@@ -74,6 +75,7 @@ get_dist_flags() {
   local flags="${flags} --epoch=${FLAGS_epoch}"
   local flags="${flags} --batch=${FLAGS_batch}"
   local flags="${flags} --in_model=${FLAGS_in_model}"
+  local flags="${flags} --warmup_model=${FLAGS_warmup_model}"
   local flags="${flags} --in=${FLAGS_in}"
   local flags="${flags} --pretrain_path=${FLAGS_pretrain_path}"
   local flags="${flags} --item_feature=${FLAGS_item_feature}"

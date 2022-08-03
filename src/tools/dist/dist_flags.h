@@ -35,6 +35,7 @@ DECLARE_string(optimizer_config);
 DECLARE_int32(epoch);
 DECLARE_int32(batch);
 DECLARE_string(in_model);
+DECLARE_string(warmup_model);
 DECLARE_string(in);
 DECLARE_string(pretrain_path);
 DECLARE_string(item_feature);
