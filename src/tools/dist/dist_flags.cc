@@ -40,6 +40,7 @@ DEFINE_string(optimizer_config, "", "Optimizer config.");
 DEFINE_int32(epoch, 1, "Number of epochs.");
 DEFINE_int32(batch, 32, "Batch size(sub_command is train, role is wk).");
 DEFINE_string(in_model, "", "Input dir of model.");
+DEFINE_string(warmup_model, "", "Warmup dir of model.");
 DEFINE_string(in, "", "Input dir/file of training/testing data(role is ps).");
 DEFINE_string(pretrain_path, "", "Input dir/file of pretrain param.");
 DEFINE_string(item_feature, "", "Input dir/file of item feature.");
@@ -161,6 +162,12 @@ void CheckFlags() {
     DXINFO("--optimizer_config will be ignored.");
     DXCHECK_THROW(fs.Open(FLAGS_in_model));
     DXCHECK_THROW(!deepx_core::IsStdinStdoutPath(FLAGS_in_model));
+  }
+
+  deepx_core::CanonicalizePath(&FLAGS_warmup_model);
+  if (!FLAGS_warmup_model.empty()) {
+    DXCHECK_THROW(fs.Open(FLAGS_warmup_model));
+    DXCHECK_THROW(!deepx_core::IsStdinStdoutPath(FLAGS_warmup_model));
   }
 
   if (FLAGS_sub_command == "train" && FLAGS_role == "ps") {

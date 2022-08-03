@@ -48,6 +48,7 @@ DEFINE_string(optimizer_config, "", "Optimizer config.");
 DEFINE_int32(model_shard, 0,
              "Number of model shards, zero disables the model shard mode.");
 DEFINE_string(in_model, "", "Input dir of model.");
+DEFINE_string(warmup_model, "", "Warmup dir of model.");
 DEFINE_string(in, "", "Input dir/file of training data.");
 DEFINE_string(pretrain_path, "", "Input dir/file of pretrain param.");
 DEFINE_string(item_feature, "", "Input dir/file of item feature.");
@@ -426,6 +427,16 @@ bool TrainerShard::Init() {
         }
       }
     }
+    if (!FLAGS_warmup_model.empty()) {
+      DXCHECK(model_shards_[i].WarmupModel(FLAGS_warmup_model));
+      DXCHECK(model_shards_[i].WarmupOptimizer(FLAGS_warmup_model));
+      if (FLAGS_ts_enable) {
+        (void)model_shards_[i].WarmupTSStore(FLAGS_warmup_model);
+      }
+      if (FLAGS_freq_filter_threshold > 0) {
+        (void)model_shards_[i].WarmupFreqStore(FLAGS_warmup_model);
+      }
+    }
   }
 
   contexts_tls_.resize(FLAGS_thread_num);
@@ -535,6 +546,11 @@ void CheckFlags() {
     DXINFO("--optimizer_config will be ignored.");
     DXCHECK(fs.Open(FLAGS_in_model));
     DXCHECK(!deepx_core::IsStdinStdoutPath(FLAGS_in_model));
+  }
+  deepx_core::CanonicalizePath(&FLAGS_warmup_model);
+  if (!FLAGS_warmup_model.empty()) {
+    DXCHECK(fs.Open(FLAGS_warmup_model));
+    DXCHECK(!deepx_core::IsStdinStdoutPath(FLAGS_warmup_model));
   }
   DXCHECK(!FLAGS_in.empty());
 
