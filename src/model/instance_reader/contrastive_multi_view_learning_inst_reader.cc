@@ -16,7 +16,7 @@
 
 #include <vector>
 
-#include "src/io/indexing.h"
+#include "src/io/indexing_wrapper.h"
 #include "src/io/value.h"
 #include "src/model/data_flow/neighbor_aggregation_flow.h"
 #include "src/model/embed_instance_reader.h"
@@ -37,6 +37,10 @@ class ContrastiveMultiViewInstReader : public EmbedInstanceReader {
  private:
   std::unique_ptr<NeighborAggregationFlow> flow_;
   vec_int_t src_nodes_;
+
+  uint16_t ns_id_;
+  std::unique_ptr<IndexingWrapper> indexing_wrapper_;
+  std::unique_ptr<IndexingWrapper> enhance_indexing_wrapper_;
 
  public:
   DEFINE_INSTANCE_READER_LIKE(ContrastiveMultiViewInstReader);
@@ -82,6 +86,12 @@ class ContrastiveMultiViewInstReader : public EmbedInstanceReader {
     return true;
   }
 
+  void PostInit(const std::string& /*node_config*/) override {
+    ns_id_ = 0;
+    indexing_wrapper_ = IndexingWrapper::Create("");
+    enhance_indexing_wrapper_ = IndexingWrapper::Create("");
+  }
+
   bool GetBatch(Instance* inst) override {
     return is_train_ ? GetTrainBatch(inst) : GetPredictBatch(inst);
   }
@@ -98,22 +108,22 @@ class ContrastiveMultiViewInstReader : public EmbedInstanceReader {
     src_nodes_ = Collect<NodeValue, int_t>(values, &NodeValue::node);
 
     // build src graph
-    std::vector<Indexing> indexings;
-    BuildGraphNodeFeatureAndBlocks(inst, src_nodes_, num_neighbors_, &indexings,
-                                   instance_name::X_NODE_FEATURE_NAME,
-                                   instance_name::X_NODE_SHUFFLED_FEATURE_NAME,
-                                   instance_name::X_SELF_BLOCK_NAME,
-                                   instance_name::X_NEIGH_BLOCK_NAME);
+    BuildGraphNodeFeatureAndBlocks(
+        inst, src_nodes_, num_neighbors_, indexing_wrapper_.get(),
+        instance_name::X_NODE_FEATURE_NAME,
+        instance_name::X_NODE_SHUFFLED_FEATURE_NAME,
+        instance_name::X_SELF_BLOCK_NAME, instance_name::X_NEIGH_BLOCK_NAME);
 
     // build contrastive graph
-    std::vector<Indexing> enhance_indexings;
     BuildGraphNodeFeatureAndBlocks(
-        inst, src_nodes_, enhance_num_neighbors_, &enhance_indexings,
+        inst, src_nodes_, enhance_num_neighbors_,
+        enhance_indexing_wrapper_.get(),
         instance_name::X_ENHANCE_NODE_FEATURE_NAME,
         instance_name::X_ENHANCE_NODE_SHUFFLED_FEATURE_NAME,
         instance_name::X_SELF_ENHANCE_BLOCK_NAME,
         instance_name::X_NEIGH_ENHANCE_BLOCK_NAME);
 
+    const auto& indexings = indexing_wrapper_->subgraph_indexing(ns_id_);
     flow_->FillNodeOrIndex(inst, instance_name::X_SRC_ID_NAME, src_nodes_,
                            &indexings[0]);
 
@@ -132,22 +142,22 @@ class ContrastiveMultiViewInstReader : public EmbedInstanceReader {
     src_nodes_ = Collect<NodeValue, int_t>(values, &NodeValue::node);
 
     // build src graph
-    std::vector<Indexing> indexings;
-    BuildGraphNodeFeatureAndBlocks(inst, src_nodes_, num_neighbors_, &indexings,
-                                   instance_name::X_NODE_FEATURE_NAME,
-                                   instance_name::X_NODE_SHUFFLED_FEATURE_NAME,
-                                   instance_name::X_SELF_BLOCK_NAME,
-                                   instance_name::X_NEIGH_BLOCK_NAME);
+    BuildGraphNodeFeatureAndBlocks(
+        inst, src_nodes_, num_neighbors_, indexing_wrapper_.get(),
+        instance_name::X_NODE_FEATURE_NAME,
+        instance_name::X_NODE_SHUFFLED_FEATURE_NAME,
+        instance_name::X_SELF_BLOCK_NAME, instance_name::X_NEIGH_BLOCK_NAME);
 
     // build contrastive graph
-    std::vector<Indexing> enhance_indexings;
     BuildGraphNodeFeatureAndBlocks(
-        inst, src_nodes_, enhance_num_neighbors_, &enhance_indexings,
+        inst, src_nodes_, enhance_num_neighbors_,
+        enhance_indexing_wrapper_.get(),
         instance_name::X_ENHANCE_NODE_FEATURE_NAME,
         instance_name::X_ENHANCE_NODE_SHUFFLED_FEATURE_NAME,
         instance_name::X_SELF_ENHANCE_BLOCK_NAME,
         instance_name::X_NEIGH_ENHANCE_BLOCK_NAME);
 
+    const auto& indexings = indexing_wrapper_->subgraph_indexing(ns_id_);
     flow_->FillNodeOrIndex(inst, instance_name::X_SRC_ID_NAME, src_nodes_,
                            &indexings[0]);
 
@@ -161,7 +171,7 @@ class ContrastiveMultiViewInstReader : public EmbedInstanceReader {
   // BuildGraphNodeFeatureAndBlock
   void BuildGraphNodeFeatureAndBlocks(Instance* inst, const vec_int_t& nodes,
                                       const std::vector<int>& num_neighbors,
-                                      std::vector<Indexing>* indexings,
+                                      IndexingWrapper* indexing_wrapper,
                                       const std::string& node_feature_name,
                                       const std::string& node_shuf_feature_name,
                                       const std::string& node_block_name,
@@ -190,9 +200,11 @@ class ContrastiveMultiViewInstReader : public EmbedInstanceReader {
     }
 
     // Fill self and neighbor block
-    inst_util::CreateIndexings(level_nodes, indexings);
+    indexing_wrapper->Clear();
+    indexing_wrapper->BuildFrom(level_nodes);
+    const auto& indexings = indexing_wrapper->subgraph_indexing(ns_id_);
     flow_->FillSelfAndNeighGraphBlock(inst, node_block_name, neigh_block_name,
-                                      level_nodes, level_neighs, *indexings,
+                                      level_nodes, level_neighs, indexings,
                                       false);
   }
 };

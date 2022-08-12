@@ -15,7 +15,7 @@
 #include <algorithm>  // std::find
 #include <vector>
 
-#include "src/io/indexing.h"
+#include "src/io/indexing_wrapper.h"
 #include "src/io/value.h"
 #include "src/model/data_flow/random_walk_flow.h"
 #include "src/model/embed_instance_reader.h"
@@ -52,7 +52,9 @@ class EgesInstReader : public EmbedInstanceReader {
   std::vector<vec_int_t> neg_nodes_list_;
 
   vec_int_t nodes_;
-  Indexing indexing_;
+
+  uint16_t ns_id_;
+  std::unique_ptr<IndexingWrapper> indexing_wrapper_;
 
  public:
   DEFINE_INSTANCE_READER_LIKE(EgesInstanceReader);
@@ -65,6 +67,11 @@ class EgesInstReader : public EmbedInstanceReader {
 
     flow_ = NewRandomWalkFlow(graph_client);
     return true;
+  }
+
+  void PostInit(const std::string& /*node_config*/) override {
+    ns_id_ = 0;
+    indexing_wrapper_ = IndexingWrapper::Create("");
   }
 
   bool InitConfigKV(const std::string& k, const std::string& v) override {
@@ -133,11 +140,13 @@ class EgesInstReader : public EmbedInstanceReader {
     flow_->FillNodeFeature(inst, instance_name::X_NODE_FEATURE_NAME, nodes_,
                            true);
     // 3. Fill index
-    inst_util::CreateIndexing(nodes_, &indexing_);
+    indexing_wrapper_->Clear();
+    indexing_wrapper_->BuildFrom(nodes_);
+    const auto& indexing = indexing_wrapper_->subgraph_indexing(ns_id_)[0];
     auto* src_node_ptr =
         &inst->get_or_insert<csr_t>(instance_name::X_SRC_NODE_NAME);
     flow_->FillNodeOrIndex(inst, instance_name::X_SRC_ID_NAME, *src_node_ptr,
-                           &indexing_);
+                           &indexing);
 
     inst->set_batch(1);
     return true;
@@ -164,9 +173,11 @@ class EgesInstReader : public EmbedInstanceReader {
                            *predict_node_ptr, true);
 
     // 3. Fill index
-    inst_util::CreateIndexing(*predict_node_ptr, &indexing_);
+    indexing_wrapper_->Clear();
+    indexing_wrapper_->BuildFrom(*predict_node_ptr);
+    const auto& indexing = indexing_wrapper_->subgraph_indexing(ns_id_)[0];
     flow_->FillNodeOrIndex(inst, instance_name::X_SRC_ID_NAME,
-                           *predict_node_ptr, &indexing_);
+                           *predict_node_ptr, &indexing);
 
     inst->set_batch(predict_node_ptr->size());
     return true;

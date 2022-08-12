@@ -157,6 +157,7 @@ bool Predictor::InitTrainerContext(TrainerContext* context) const {
     if (FLAGS_gnn_model) {
       // GNN models
       DXCHECK(instance_reader->InitGraphClient(graph_client_.get()));
+      instance_reader->PostInit(FLAGS_node_config);
     }
 
     return instance_reader;

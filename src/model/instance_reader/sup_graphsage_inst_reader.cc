@@ -15,7 +15,7 @@
 
 #include <vector>
 
-#include "src/io/indexing.h"
+#include "src/io/indexing_wrapper.h"
 #include "src/io/value.h"
 #include "src/model/data_flow/neighbor_aggregation_flow.h"
 #include "src/model/embed_instance_reader.h"
@@ -44,7 +44,9 @@ class SupGraphsageInstReader : public EmbedInstanceReader {
 
   vec_set_t level_nodes_;
   vec_map_neigh_t level_neighs_;
-  std::vector<Indexing> indexings_;
+
+  uint16_t ns_id_;
+  std::unique_ptr<IndexingWrapper> indexing_wrapper_;
 
  public:
   DEFINE_INSTANCE_READER_LIKE(SupGraphsageInstReader);
@@ -57,6 +59,11 @@ class SupGraphsageInstReader : public EmbedInstanceReader {
 
     flow_ = NewNeighborAggregationFlow(graph_client);
     return true;
+  }
+
+  void PostInit(const std::string& /*node_config*/) override {
+    ns_id_ = 0;
+    indexing_wrapper_ = IndexingWrapper::Create("");
   }
 
   bool InitConfigKV(const std::string& k, const std::string& v) override {
@@ -137,15 +144,17 @@ class SupGraphsageInstReader : public EmbedInstanceReader {
     }
 
     // 3. Fill self And neigbor block
-    inst_util::CreateIndexings(level_nodes_, &indexings_);
+    indexing_wrapper_->Clear();
+    indexing_wrapper_->BuildFrom(level_nodes_);
+    const auto& indexings = indexing_wrapper_->subgraph_indexing(ns_id_);
     flow_->FillSelfAndNeighGraphBlock(inst, instance_name::X_SELF_BLOCK_NAME,
                                       instance_name::X_NEIGH_BLOCK_NAME,
-                                      level_nodes_, level_neighs_, indexings_,
+                                      level_nodes_, level_neighs_, indexings,
                                       false);
 
     // 4. Fill index
     flow_->FillNodeOrIndex(inst, instance_name::X_NODE_ID_NAME, nodes_,
-                           &indexings_[0]);
+                           &indexings[0]);
 
     // 5. Fill label
     flow_->FillLabelAndCheck(inst, deepx_core::Y_NAME, labels_list_, num_label_,
@@ -184,15 +193,17 @@ class SupGraphsageInstReader : public EmbedInstanceReader {
     }
 
     // 3. Fill self And neigbor block
-    inst_util::CreateIndexings(level_nodes_, &indexings_);
+    indexing_wrapper_->Clear();
+    indexing_wrapper_->BuildFrom(level_nodes_);
+    const auto& indexings = indexing_wrapper_->subgraph_indexing(ns_id_);
     flow_->FillSelfAndNeighGraphBlock(inst, instance_name::X_SELF_BLOCK_NAME,
                                       instance_name::X_NEIGH_BLOCK_NAME,
-                                      level_nodes_, level_neighs_, indexings_,
+                                      level_nodes_, level_neighs_, indexings,
                                       false);
 
     // 4. Fill index
     flow_->FillNodeOrIndex(inst, instance_name::X_NODE_ID_NAME, nodes_,
-                           &indexings_[0]);
+                           &indexings[0]);
 
     // input : predict_node
     auto* predict_node_ptr =

@@ -29,7 +29,7 @@ class IndexingWrapper {
   std::vector<subgraph_indexing_t> subgraph_indexings_;
 
   int subgraph_size_ = 0;
-  std::vector<uint16_t> subgraph_offset_;
+  std::vector<int> subgraph_offset_;
 
  public:
   static std::unique_ptr<IndexingWrapper> Create(const std::string& config);
@@ -38,7 +38,7 @@ class IndexingWrapper {
   void Clear() noexcept;
   void BuildFrom(const vec_int_t& nodes);
   void BuildFrom(const vec_set_t& level_nodes);
-  int Index(int_t node) const;
+  int GlobalGet(int_t node) const;
 
   const subgraph_indexing_t& subgraph_indexing(uint16_t id) const noexcept {
     return subgraph_indexings_[id];

@@ -13,7 +13,7 @@
 
 #include <vector>
 
-#include "src/io/indexing.h"
+#include "src/io/indexing_wrapper.h"
 #include "src/io/value.h"
 #include "src/model/data_flow/deep_flow.h"
 #include "src/model/embed_instance_reader.h"
@@ -37,15 +37,23 @@ class SelfTrainingDSSMInstReader : public EmbedInstanceReader {
 
   // for item feature
   vec_int_t unique_items_;
-  Indexing item_indexing_;
   std::vector<vec_pair_t> item_feats_list_;
 
   // for self training
   int num_self_training_ = 500;
   std::vector<vec_int_t> self_training_items_list_;
 
+  uint16_t ns_id_;
+  std::unique_ptr<IndexingWrapper> indexing_wrapper_;
+
  public:
   DEFINE_INSTANCE_READER_LIKE(SelfTrainingDSSMInstReader);
+
+ public:
+  void PostInit(const std::string& /*node_config*/) override {
+    ns_id_ = 0;
+    indexing_wrapper_ = IndexingWrapper::Create("");
+  }
 
  protected:
   bool InitConfigKV(const std::string& k, const std::string& v) override {
@@ -109,11 +117,10 @@ class SelfTrainingDSSMInstReader : public EmbedInstanceReader {
                           item_nodes_ptr, item_feats_list_);
 
     // 3. Fill edge and label
-    inst_util::CreateIndexing(unique_items_, &item_indexing_);
+    indexing_wrapper_->Clear();
+    indexing_wrapper_->BuildFrom(unique_items_);
     auto indexing_func = [this](int_t node) {
-      int index = item_indexing_.Get(node);
-      DXCHECK(index >= 0);
-      return (int_t)index;
+      return indexing_wrapper_->GlobalGet(node);
     };
     flow_.FillEdgeAndLabel(inst, instance_name::X_USER_ID_NAME,
                            instance_name::X_ITEM_ID_NAME, deepx_core::Y_NAME,

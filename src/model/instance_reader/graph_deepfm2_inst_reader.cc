@@ -16,7 +16,7 @@
 
 #include <vector>
 
-#include "src/io/indexing.h"
+#include "src/io/indexing_wrapper.h"
 #include "src/model/data_flow/neighbor_aggregation_flow.h"
 #include "src/model/embed_instance_reader.h"
 #include "src/model/instance_node_name.h"
@@ -54,7 +54,9 @@ class GraphDeepFM2InstReader : public EmbedInstanceReader {
   vec_int_t merged_nodes_;
   vec_set_t level_nodes_;
   vec_map_neigh_t level_neighbors_;
-  std::vector<Indexing> indexings_;
+
+  uint16_t ns_id_;
+  std::unique_ptr<IndexingWrapper> indexing_wrapper_;
 
  public:
   DEFINE_INSTANCE_READER_LIKE(GraphDeepFM2InstReader);
@@ -67,6 +69,11 @@ class GraphDeepFM2InstReader : public EmbedInstanceReader {
 
     flow_ = NewNeighborAggregationFlow(graph_client);
     return true;
+  }
+
+  void PostInit(const std::string& /*node_config*/) override {
+    ns_id_ = 0;
+    indexing_wrapper_ = IndexingWrapper::Create("");
   }
 
  protected:
@@ -172,24 +179,24 @@ class GraphDeepFM2InstReader : public EmbedInstanceReader {
                                 level_nodes_);
 
     // 2. Fill self And neigbor block
-    inst_util::CreateIndexings(level_nodes_, &indexings_);
+    indexing_wrapper_->Clear();
+    indexing_wrapper_->BuildFrom(level_nodes_);
+    const auto& indexings = indexing_wrapper_->subgraph_indexing(ns_id_);
     flow_->FillSelfAndNeighGraphBlock(inst, instance_name::X_SELF_BLOCK_NAME,
                                       instance_name::X_NEIGH_BLOCK_NAME,
-                                      level_nodes_, level_neighbors_,
-                                      indexings_, false);
+                                      level_nodes_, level_neighbors_, indexings,
+                                      false);
 
     // 3. Fill index
     auto user_id_name = instance_name::X_NODE_ID_NAME + USER_ENCODER_NAME;
-    flow_->FillNodeOrIndex(inst, user_id_name, user_nodes, &indexings_[0]);
+    flow_->FillNodeOrIndex(inst, user_id_name, user_nodes, &indexings[0]);
 
     auto user_node_name = instance_name::X_USER_NODE_NAME;
     flow_->FillNodeOrIndex(inst, user_node_name, user_nodes, nullptr);
 
     // 4. Fill edge and label
     auto src_index_func = [this](int_t node) {
-      int index = (indexings_[0]).Get(node);
-      DXCHECK(index >= 0);
-      return (int_t)index;
+      return indexing_wrapper_->GlobalGet(node);
     };
 
     auto dst_index_func = [](int_t node) { return node; };

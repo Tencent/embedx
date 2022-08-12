@@ -15,7 +15,7 @@
 
 #include <vector>
 
-#include "src/io/indexing.h"
+#include "src/io/indexing_wrapper.h"
 #include "src/io/value.h"
 #include "src/model/data_flow/neighbor_aggregation_flow.h"
 #include "src/model/embed_instance_reader.h"
@@ -41,7 +41,11 @@ class UnsupGraphsageInstReader : public EmbedInstanceReader {
   vec_int_t merged_nodes_;
   vec_set_t level_nodes_;
   vec_map_neigh_t level_neighbors_;
-  std::vector<Indexing> indexings_;
+
+  std::string node_config_;
+
+  uint16_t ns_id_;
+  std::unique_ptr<IndexingWrapper> indexing_wrapper_;
 
  public:
   DEFINE_INSTANCE_READER_LIKE(UnsupGraphsageInstReader);
@@ -54,6 +58,11 @@ class UnsupGraphsageInstReader : public EmbedInstanceReader {
 
     flow_ = NewNeighborAggregationFlow(graph_client);
     return true;
+  }
+
+  void PostInit(const std::string& /*node_config*/) override {
+    ns_id_ = 0;
+    indexing_wrapper_ = IndexingWrapper::Create("");
   }
 
  protected:
@@ -120,17 +129,17 @@ class UnsupGraphsageInstReader : public EmbedInstanceReader {
                                  level_nodes_);
 
     // 2. Fill self and neighbor block
-    inst_util::CreateIndexings(level_nodes_, &indexings_);
+    indexing_wrapper_->Clear();
+    indexing_wrapper_->BuildFrom(level_nodes_);
+    const auto& indexings = indexing_wrapper_->subgraph_indexing(ns_id_);
     flow_->FillSelfAndNeighGraphBlock(inst, instance_name::X_SELF_BLOCK_NAME,
                                       instance_name::X_NEIGH_BLOCK_NAME,
-                                      level_nodes_, level_neighbors_,
-                                      indexings_, false);
+                                      level_nodes_, level_neighbors_, indexings,
+                                      false);
 
     // 3. Fill edge and label
     auto indexing_func = [this](int_t node) {
-      int index = indexings_[0].Get(node);
-      DXCHECK(index >= 0);
-      return (int_t)index;
+      return indexing_wrapper_->GlobalGet(node);
     };
 
     flow_->FillEdgeAndLabel(inst, instance_name::X_SRC_ID_NAME,
@@ -165,15 +174,17 @@ class UnsupGraphsageInstReader : public EmbedInstanceReader {
                                  level_nodes_);
 
     // 2. Fill self and neighbor block
-    inst_util::CreateIndexings(level_nodes_, &indexings_);
+    indexing_wrapper_->Clear();
+    indexing_wrapper_->BuildFrom(level_nodes_);
+    const auto& indexings = indexing_wrapper_->subgraph_indexing(ns_id_);
     flow_->FillSelfAndNeighGraphBlock(inst, instance_name::X_SELF_BLOCK_NAME,
                                       instance_name::X_NEIGH_BLOCK_NAME,
-                                      level_nodes_, level_neighbors_,
-                                      indexings_, false);
+                                      level_nodes_, level_neighbors_, indexings,
+                                      false);
 
     // 3. Fill index
     flow_->FillNodeOrIndex(inst, instance_name::X_SRC_ID_NAME, src_nodes_,
-                           &indexings_[0]);
+                           &indexings[0]);
 
     // 4. Fill node
     auto* predict_node_ptr =

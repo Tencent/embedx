@@ -15,7 +15,7 @@
 
 #include <vector>
 
-#include "src/io/indexing.h"
+#include "src/io/indexing_wrapper.h"
 #include "src/io/io_util.h"
 #include "src/io/value.h"
 #include "src/model/data_flow/deep_flow.h"
@@ -63,11 +63,11 @@ class GraphDSSMInstReader : public EmbedInstanceReader {
 
   // for item feature
   vec_int_t unique_items_;
-  Indexing item_indexing_;
 
   vec_set_t level_nodes_;
   vec_map_neigh_t level_neighbors_;
-  std::vector<Indexing> indexings_;
+
+  std::unique_ptr<IndexingWrapper> indexing_wrapper_;
 
  public:
   DEFINE_INSTANCE_READER_LIKE(GraphDSSMInstReader);
@@ -80,6 +80,10 @@ class GraphDSSMInstReader : public EmbedInstanceReader {
 
     na_flow_ = NewNeighborAggregationFlow(graph_client);
     return true;
+  }
+
+  void PostInit(const std::string& node_config) override {
+    indexing_wrapper_ = IndexingWrapper::Create(node_config);
   }
 
  protected:
@@ -142,15 +146,18 @@ class GraphDSSMInstReader : public EmbedInstanceReader {
                                     level_nodes_);
 
     // 2. Fill self and neighbor block
-    inst_util::CreateIndexings(level_nodes_, &indexings_);
+    indexing_wrapper_->Clear();
+    indexing_wrapper_->BuildFrom(level_nodes_);
+    const auto& user_indexings =
+        indexing_wrapper_->subgraph_indexing(user_group_);
     na_flow_->FillSelfAndNeighGraphBlock(inst, instance_name::X_SELF_BLOCK_NAME,
                                          instance_name::X_NEIGH_BLOCK_NAME,
                                          level_nodes_, level_neighbors_,
-                                         indexings_, false);
+                                         user_indexings, false);
 
     // 3. Fill index
     na_flow_->FillNodeOrIndex(inst, instance_name::X_SRC_ID_NAME, user_nodes,
-                              &indexings_[0]);
+                              &user_indexings[0]);
 
     // 4. Fill user feature
     vec_int_t* user_nodes_ptr = nullptr;
@@ -166,9 +173,11 @@ class GraphDSSMInstReader : public EmbedInstanceReader {
                               unique_items_, add_node_);
 
     // 6. Fill edge and label
-    inst_util::CreateIndexing(unique_items_, &item_indexing_);
-    auto indexing_func = [this](int_t node) {
-      int index = item_indexing_.Get(node);
+    indexing_wrapper_->BuildFrom(unique_items_);
+    auto ns_id = io_util::GetNodeType(unique_items_[0]);
+    const auto& item_indexing = indexing_wrapper_->subgraph_indexing(ns_id)[0];
+    auto indexing_func = [item_indexing](int_t node) {
+      int index = item_indexing.Get(node);
       DXCHECK(index >= 0);
       return (int_t)index;
     };

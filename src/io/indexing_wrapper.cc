@@ -21,9 +21,9 @@ namespace embedx {
 
 void IndexingWrapper::Clear() noexcept {
   subgraph_size_ = 0;
-  subgraph_offset_.clear();
 
   for (int i = 0; i < ns_size_; ++i) {
+    subgraph_offset_[i] = 0;
     auto& subgraph_indexing = subgraph_indexings_[i];
     for (auto& indexing : subgraph_indexing) {
       indexing.Clear();
@@ -33,7 +33,11 @@ void IndexingWrapper::Clear() noexcept {
 
 void IndexingWrapper::BuildFrom(const vec_int_t& nodes) {
   DXCHECK(!nodes.empty());
-  auto ns_id = io_util::GetNodeType(nodes[0]);
+
+  uint16_t ns_id = 0;
+  if (ns_size_ > 1) {
+    ns_id = io_util::GetNodeType(nodes[0]);
+  }
   DXCHECK(ns_id < ns_size_);
 
   auto& subgraph_indexing = subgraph_indexings_[ns_id];
@@ -47,10 +51,14 @@ void IndexingWrapper::BuildFrom(const vec_int_t& nodes) {
 
 void IndexingWrapper::BuildFrom(const vec_set_t& level_nodes) {
   DXCHECK(!level_nodes.empty() && !level_nodes[0].empty());
-  auto first_node = *(level_nodes[0].begin());
 
-  auto ns_id = io_util::GetNodeType(first_node);
+  uint16_t ns_id = 0;
+  if (ns_size_ > 1) {
+    auto first_node = *(level_nodes[0].begin());
+    ns_id = io_util::GetNodeType(first_node);
+  }
   DXCHECK(ns_id < ns_size_);
+
   auto& subgraph_indexing = subgraph_indexings_[ns_id];
   subgraph_indexing.resize(level_nodes.size());
 
@@ -67,11 +75,14 @@ void IndexingWrapper::BuildFrom(const vec_set_t& level_nodes) {
   subgraph_size_ += subgraph_indexing[0].Size();
 }
 
-int IndexingWrapper::Index(int_t node) const {
-  auto ns_id = io_util::GetNodeType(node);
+int IndexingWrapper::GlobalGet(int_t node) const {
+  uint16_t ns_id = 0;
+  if (ns_size_ > 1) {
+    ns_id = io_util::GetNodeType(node);
+  }
   DXCHECK(ns_id < ns_size_);
-  const auto& indexing = subgraph_indexings_[ns_id][0];
 
+  const auto& indexing = subgraph_indexings_[ns_id][0];
   if (indexing.Get(node) == -1) {
     return -1;
   } else {
