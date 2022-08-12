@@ -283,10 +283,12 @@ bool Trainer::InitTrainerContext(TrainerContext* context) const {
 
     if (graph_client_) {
       DXCHECK(instance_reader->InitGraphClient(graph_client_.get()));
+      instance_reader->PostInit(FLAGS_node_config);
     }
 
     if (deep_client_) {
       DXCHECK(instance_reader->InitDeepClient(deep_client_.get()));
+      instance_reader->PostInit(FLAGS_node_config);
     }
 
     return instance_reader;

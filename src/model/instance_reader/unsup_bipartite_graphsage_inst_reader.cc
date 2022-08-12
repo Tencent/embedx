@@ -16,7 +16,7 @@
 #include <cinttypes>  // PRIu64
 #include <vector>
 
-#include "src/io/indexing.h"
+#include "src/io/indexing_wrapper.h"
 #include "src/io/io_util.h"
 #include "src/io/value.h"
 #include "src/model/data_flow/neighbor_aggregation_flow.h"
@@ -67,8 +67,7 @@ class UnsupBipartiteInstReader : public EmbedInstanceReader {
   vec_int_t dst_nodes_;
   std::vector<vec_int_t> neg_nodes_list_;
 
-  std::vector<Indexing> user_indexings_;
-  std::vector<Indexing> item_indexings_;
+  std::unique_ptr<IndexingWrapper> indexing_wrapper_;
 
  public:
   DEFINE_INSTANCE_READER_LIKE(UnsupBipartiteInstReader);
@@ -81,6 +80,10 @@ class UnsupBipartiteInstReader : public EmbedInstanceReader {
 
     flow_ = NewNeighborAggregationFlow(graph_client);
     return true;
+  }
+
+  void PostInit(const std::string& node_config) override {
+    indexing_wrapper_ = IndexingWrapper::Create(node_config);
   }
 
  protected:
@@ -145,22 +148,15 @@ class UnsupBipartiteInstReader : public EmbedInstanceReader {
     }
 
     // Fill instance
-    FillInstance(inst, USER_ENCODER_NAME, user_nodes, num_neighbors_,
-                 &user_indexings_);
-    FillInstance(inst, ITEM_ENCODER_NAME, item_nodes, num_neighbors_,
-                 &item_indexings_);
+    indexing_wrapper_->Clear();
+    FillInstance(inst, USER_ENCODER_NAME, user_nodes, user_ns_id_,
+                 num_neighbors_);
+    FillInstance(inst, ITEM_ENCODER_NAME, item_nodes, item_ns_id_,
+                 num_neighbors_);
 
     // Fill edge and label
     auto index_func = [this](int_t node) {
-      auto group = io_util::GetNodeType(node);
-      if (group == user_ns_id_) {
-        int index = user_indexings_[0].Get(node);
-        DXCHECK(index >= 0);
-        return (int_t)index;
-      }
-      auto index = item_indexings_[0].Get(node);
-      DXCHECK(index >= 0);
-      return (int_t)index + user_indexings_[0].Size();
+      return indexing_wrapper_->GlobalGet(node);
     };
     flow_->FillEdgeAndLabel(inst, instance_name::X_SRC_ID_NAME,
                             instance_name::X_DST_ID_NAME, deepx_core::Y_NAME,
@@ -191,10 +187,11 @@ class UnsupBipartiteInstReader : public EmbedInstanceReader {
                          &item_nodes);
 
     // Fill Instance
-    FillInstance(inst, USER_ENCODER_NAME, user_nodes, num_neighbors_,
-                 &user_indexings_);
-    FillInstance(inst, ITEM_ENCODER_NAME, item_nodes, num_neighbors_,
-                 &item_indexings_);
+    indexing_wrapper_->Clear();
+    FillInstance(inst, USER_ENCODER_NAME, user_nodes, user_ns_id_,
+                 num_neighbors_);
+    FillInstance(inst, ITEM_ENCODER_NAME, item_nodes, item_ns_id_,
+                 num_neighbors_);
 
     // Fill index
     FillIndex(inst, instance_name::X_SRC_ID_NAME, src_nodes_);
@@ -209,32 +206,19 @@ class UnsupBipartiteInstReader : public EmbedInstanceReader {
   }
 
  private:
-  int Index(int_t node) const {
-    auto group = io_util::GetNodeType(node);
-    if (group == user_ns_id_) {
-      int index = user_indexings_[0].Get(node);
-      DXCHECK(index >= 0);
-      return (int_t)index;
-    }
-    auto index = item_indexings_[0].Get(node);
-    DXCHECK(index >= 0);
-    return (int_t)index + user_indexings_[0].Size();
-  }
-
   void FillIndex(Instance* inst, const std::string& name,
                  const vec_int_t& nodes) const {
     auto* id_ptr = &inst->get_or_insert<csr_t>(name);
     id_ptr->clear();
     for (auto node : nodes) {
-      id_ptr->emplace(Index(node), 1);
+      id_ptr->emplace(indexing_wrapper_->GlobalGet(node), 1);
       id_ptr->add_row();
     }
   }
 
   void FillInstance(Instance* inst, const std::string& encoder_name,
-                    const vec_int_t& nodes,
-                    const std::vector<int>& num_neighbors,
-                    std::vector<Indexing>* indexings) {
+                    const vec_int_t& nodes, uint16_t ns_id,
+                    const std::vector<int>& num_neighbors) {
     // Sample subgraph
     vec_set_t level_nodes;
     vec_map_neigh_t level_neighs;
@@ -252,11 +236,14 @@ class UnsupBipartiteInstReader : public EmbedInstanceReader {
     }
 
     // Fill self And neigbor block
-    inst_util::CreateIndexings(level_nodes, indexings);
+    auto& indexings = indexing_wrapper_->subgraph_indexing(ns_id);
+    if (!nodes.empty()) {
+      indexing_wrapper_->BuildFrom(level_nodes);
+    }
     flow_->FillSelfAndNeighGraphBlock(
         inst, instance_name::X_SELF_BLOCK_NAME + encoder_name,
         instance_name::X_NEIGH_BLOCK_NAME + encoder_name, level_nodes,
-        level_neighs, *indexings, false);
+        level_neighs, indexings, false);
   }
 };
 

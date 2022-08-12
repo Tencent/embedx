@@ -16,7 +16,7 @@
 
 #include <vector>
 
-#include "src/io/indexing.h"
+#include "src/io/indexing_wrapper.h"
 #include "src/model/data_flow/neighbor_aggregation_flow.h"
 #include "src/model/embed_instance_reader.h"
 #include "src/model/instance_node_name.h"
@@ -45,6 +45,7 @@ class BipartiteDeepFM2InstReader : public EmbedInstanceReader {
   int window_size_ = 1;
   uint16_t user_group_ = 0;
   uint16_t item_group_ = 0;
+  std::string node_config_;
 
  private:
   std::unique_ptr<NeighborAggregationFlow> flow_;
@@ -56,8 +57,7 @@ class BipartiteDeepFM2InstReader : public EmbedInstanceReader {
   vec_int_t total_item_nodes_;
 
   std::vector<int> walk_lengths_;
-  std::vector<Indexing> user_indexings_;
-  std::vector<Indexing> item_indexings_;
+  std::unique_ptr<IndexingWrapper> indexing_wrapper_;
 
  public:
   DEFINE_INSTANCE_READER_LIKE(BipartiteDeepFM2InstReader);
@@ -70,6 +70,10 @@ class BipartiteDeepFM2InstReader : public EmbedInstanceReader {
 
     flow_ = NewNeighborAggregationFlow(graph_client);
     return true;
+  }
+
+  void PostInit(const std::string& node_config) override {
+    indexing_wrapper_ = IndexingWrapper::Create(node_config);
   }
 
  protected:
@@ -99,6 +103,8 @@ class BipartiteDeepFM2InstReader : public EmbedInstanceReader {
       user_group_ = std::stoi(v);
     } else if (k == "item_group_id") {
       item_group_ = std::stoi(v);
+    } else if (k == "node_config") {
+      node_config_ = v;
     } else {
       DXERROR("Unexpected config: %s = %s.", k.c_str(), v.c_str());
       return false;
@@ -166,11 +172,13 @@ class BipartiteDeepFM2InstReader : public EmbedInstanceReader {
     flow_->MergeTo(src_nodes, &total_user_nodes_);
 
     // user encoder
-    FillInstance(inst, USER_ENCODER_NAME, total_user_nodes_, num_neighbors_,
-                 &user_indexings_);
+    FillInstance(inst, USER_ENCODER_NAME, user_group_, total_user_nodes_,
+                 num_neighbors_);
+    const auto& user_indexings =
+        indexing_wrapper_->subgraph_indexing(user_group_);
     flow_->FillNodeOrIndex(inst,
                            instance_name::X_USER_ID_NAME + USER_ENCODER_NAME,
-                           user_nodes, &user_indexings_[0]);
+                           user_nodes, &user_indexings[0]);
 
     // item
     total_item_nodes_.clear();
@@ -179,20 +187,22 @@ class BipartiteDeepFM2InstReader : public EmbedInstanceReader {
     flow_->MergeTo(neg_nodes_list[item_group_], &total_item_nodes_);
 
     // item encoder
-    FillInstance(inst, ITEM_ENCODER_NAME, total_item_nodes_, num_neighbors_,
-                 &item_indexings_);
+    FillInstance(inst, ITEM_ENCODER_NAME, item_group_, total_item_nodes_,
+                 num_neighbors_);
+    const auto& item_indexings =
+        indexing_wrapper_->subgraph_indexing(item_group_);
     flow_->FillNodeOrIndex(inst,
                            instance_name::X_ITEM_ID_NAME + ITEM_ENCODER_NAME,
-                           item_nodes, &item_indexings_[0]);
+                           item_nodes, &item_indexings[0]);
 
     // Fill edge and label
-    auto src_indexing_func = [this](int_t node) {
-      int index = user_indexings_[0].Get(node);
+    auto src_indexing_func = [user_indexings](int_t node) {
+      int index = user_indexings[0].Get(node);
       DXCHECK(index >= 0);
       return (int_t)index;
     };
-    auto dst_indexing_func = [this](int_t node) {
-      int index = item_indexings_[0].Get(node);
+    auto dst_indexing_func = [item_indexings](int_t node) {
+      int index = item_indexings[0].Get(node);
       DXCHECK(index >= 0);
       return (int_t)index;
     };
@@ -224,26 +234,29 @@ class BipartiteDeepFM2InstReader : public EmbedInstanceReader {
                                     item_group_, &user_nodes, &item_nodes);
 
     // user encoder
-    FillInstance(inst, USER_ENCODER_NAME, user_nodes, num_neighbors_,
-                 &user_indexings_);
+    FillInstance(inst, USER_ENCODER_NAME, user_group_, user_nodes,
+                 num_neighbors_);
+    const auto& user_indexings =
+        indexing_wrapper_->subgraph_indexing(user_group_);
     flow_->FillNodeOrIndex(inst,
                            instance_name::X_USER_ID_NAME + USER_ENCODER_NAME,
-                           user_nodes, &user_indexings_[0]);
+                           user_nodes, &user_indexings[0]);
 
     // item encoder
-    FillInstance(inst, ITEM_ENCODER_NAME, item_nodes, num_neighbors_,
-                 &item_indexings_);
+    FillInstance(inst, ITEM_ENCODER_NAME, item_group_, item_nodes,
+                 num_neighbors_);
+    const auto& item_indexings =
+        indexing_wrapper_->subgraph_indexing(item_group_);
     flow_->FillNodeOrIndex(inst,
                            instance_name::X_ITEM_ID_NAME + ITEM_ENCODER_NAME,
-                           item_nodes, &item_indexings_[0]);
+                           item_nodes, &item_indexings[0]);
 
     return ret_flag;
   }
 
   void FillInstance(Instance* inst, const std::string& encoder_name,
-                    const vec_int_t& nodes,
-                    const std::vector<int>& num_neighbors,
-                    std::vector<Indexing>* indexings) {
+                    uint16_t ns_id, const vec_int_t& nodes,
+                    const std::vector<int>& num_neighbors) {
     // Sample subgraph
     vec_set_t level_nodes;
     vec_map_neigh_t level_neighs;
@@ -261,11 +274,15 @@ class BipartiteDeepFM2InstReader : public EmbedInstanceReader {
     }
 
     // Fill self And neigbor block
-    inst_util::CreateIndexings(level_nodes, indexings);
+    indexing_wrapper_->Clear();
+    auto& indexings = indexing_wrapper_->subgraph_indexing(ns_id);
+    if (!nodes.empty()) {
+      indexing_wrapper_->BuildFrom(level_nodes);
+    }
     flow_->FillSelfAndNeighGraphBlock(
         inst, instance_name::X_SELF_BLOCK_NAME + encoder_name,
         instance_name::X_NEIGH_BLOCK_NAME + encoder_name, level_nodes,
-        level_neighs, *indexings, false);
+        level_neighs, indexings, false);
   }
 };
 

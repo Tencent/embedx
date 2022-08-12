@@ -39,6 +39,7 @@ class EmbedInstanceReader : public InstanceReaderImpl {
  public:
   virtual bool InitGraphClient(const GraphClient* graph_client);
   virtual bool InitDeepClient(const DeepClient* deep_client);
+  virtual void PostInit(const std::string& /*node_config*/) {}
 
   bool Open(const std::string& file) override {
     return line_parser_.Open(file);

@@ -15,7 +15,7 @@
 
 #include <vector>
 
-#include "src/io/indexing.h"
+#include "src/io/indexing_wrapper.h"
 #include "src/io/value.h"
 #include "src/model/data_flow/neighbor_aggregation_flow.h"
 #include "src/model/embed_instance_reader.h"
@@ -42,7 +42,9 @@ class DeepGraphInfoMaxInstReader : public EmbedInstanceReader {
   vec_set_t level_nodes_;
   vec_int_t shuffled_nodes_;
   vec_map_neigh_t level_neighbors_;
-  std::vector<Indexing> indexings_;
+
+  uint16_t ns_id_;
+  std::unique_ptr<IndexingWrapper> indexing_wrapper_;
 
  public:
   DEFINE_INSTANCE_READER_LIKE(DeepGraphInfoMaxInstReader);
@@ -86,6 +88,11 @@ class DeepGraphInfoMaxInstReader : public EmbedInstanceReader {
     return true;
   }
 
+  void PostInit(const std::string& /*node_config*/) override {
+    ns_id_ = 0;
+    indexing_wrapper_ = IndexingWrapper::Create("");
+  }
+
  protected:
   bool GetBatch(Instance* inst) override {
     return is_train_ ? GetTrainBatch(inst) : GetPredictBatch(inst);
@@ -122,14 +129,16 @@ class DeepGraphInfoMaxInstReader : public EmbedInstanceReader {
                            shuffled_nodes_, false);
 
     // 3. Fill self and neighbor block
-    inst_util::CreateIndexings(level_nodes_, &indexings_);
+    indexing_wrapper_->Clear();
+    indexing_wrapper_->BuildFrom(level_nodes_);
+    const auto& indexings = indexing_wrapper_->subgraph_indexing(ns_id_);
     flow_->FillSelfAndNeighGraphBlock(inst, instance_name::X_SELF_BLOCK_NAME,
                                       instance_name::X_NEIGH_BLOCK_NAME,
-                                      level_nodes_, level_neighbors_,
-                                      indexings_, false);
+                                      level_nodes_, level_neighbors_, indexings,
+                                      false);
     // 4. Fill index
     flow_->FillNodeOrIndex(inst, instance_name::X_SRC_ID_NAME, src_nodes_,
-                           &indexings_[0]);
+                           &indexings[0]);
 
     inst->set_batch(src_nodes_.size());
     return true;
@@ -157,15 +166,17 @@ class DeepGraphInfoMaxInstReader : public EmbedInstanceReader {
                                  level_nodes_);
 
     // 2. Fill self and neighbor block
-    inst_util::CreateIndexings(level_nodes_, &indexings_);
+    indexing_wrapper_->Clear();
+    indexing_wrapper_->BuildFrom(level_nodes_);
+    const auto& indexings = indexing_wrapper_->subgraph_indexing(ns_id_);
     flow_->FillSelfAndNeighGraphBlock(inst, instance_name::X_SELF_BLOCK_NAME,
                                       instance_name::X_NEIGH_BLOCK_NAME,
-                                      level_nodes_, level_neighbors_,
-                                      indexings_, false);
+                                      level_nodes_, level_neighbors_, indexings,
+                                      false);
 
     // 3. Fill index
     flow_->FillNodeOrIndex(inst, instance_name::X_SRC_ID_NAME, src_nodes_,
-                           &indexings_[0]);
+                           &indexings[0]);
 
     auto* predict_node_ptr =
         &inst->get_or_insert<vec_int_t>(instance_name::X_PREDICT_NODE_NAME);
