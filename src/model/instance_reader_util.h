@@ -39,9 +39,13 @@ void RemoveDuplicateItems(const vec_int_t& pos_items,
                           vec_int_t* unique_items);
 void CheckLengthValid(const std::vector<vec_int_t>& seqs);
 
-void ParseUserAndItemFrom(deepx_core::Instance* inst, const std::string& name,
-                          uint16_t user_group, uint16_t item_group,
-                          vec_int_t* user_nodes, vec_int_t* item_nodes);
+void AppendNodeFrom(const vec_int_t& nodes, uint16_t user_group,
+                    uint16_t item_group, vec_int_t* user_nodes,
+                    vec_int_t* item_nodes);
+
+void ParseAndCheckNodeFrom(deepx_core::Instance* inst, const std::string& name,
+                           uint16_t user_group, uint16_t item_group,
+                           vec_int_t* user_nodes, vec_int_t* item_nodes);
 
 void GenerateSeqFrom(const GraphClient* client, const vec_int_t& user_nodes,
                      const vec_int_t& item_nodes,
