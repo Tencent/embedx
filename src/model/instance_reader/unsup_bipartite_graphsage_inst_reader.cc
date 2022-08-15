@@ -13,7 +13,6 @@
 #include <deepx_core/common/str_util.h>
 #include <deepx_core/dx_log.h>
 
-#include <cinttypes>  // PRIu64
 #include <vector>
 
 #include "src/io/indexing_wrapper.h"
@@ -29,22 +28,6 @@ namespace {
 
 const std::string USER_ENCODER_NAME = "USER_ENCODER_NAME";
 const std::string ITEM_ENCODER_NAME = "ITEM_ENCODER_NAME";
-
-void ParseUserAndItemFrom(const vec_int_t& nodes, uint16_t user_group,
-                          uint16_t item_group, vec_int_t* user_nodes,
-                          vec_int_t* item_nodes) {
-  for (auto& node : nodes) {
-    auto group = io_util::GetNodeType(node);
-    if (group == user_group) {
-      user_nodes->emplace_back(node);
-    } else if (group == item_group) {
-      item_nodes->emplace_back(node);
-    } else {
-      DXERROR("Invalid node: %" PRIu64 " with ns_id: %d, expect %d or %d.",
-              node, (int)group, (int)user_group, (int)item_group);
-    }
-  }
-}
 
 }  // namespace
 
@@ -138,13 +121,13 @@ class UnsupBipartiteInstReader : public EmbedInstanceReader {
 
     // Parse user and item node from src、dst and neg nodes
     vec_int_t user_nodes, item_nodes;
-    ParseUserAndItemFrom(src_nodes_, user_ns_id_, item_ns_id_, &user_nodes,
-                         &item_nodes);
-    ParseUserAndItemFrom(dst_nodes_, user_ns_id_, item_ns_id_, &user_nodes,
-                         &item_nodes);
+    inst_util::AppendNodeFrom(src_nodes_, user_ns_id_, item_ns_id_, &user_nodes,
+                              &item_nodes);
+    inst_util::AppendNodeFrom(dst_nodes_, user_ns_id_, item_ns_id_, &user_nodes,
+                              &item_nodes);
     for (auto& neg_nodes : neg_nodes_list_) {
-      ParseUserAndItemFrom(neg_nodes, user_ns_id_, item_ns_id_, &user_nodes,
-                           &item_nodes);
+      inst_util::AppendNodeFrom(neg_nodes, user_ns_id_, item_ns_id_,
+                                &user_nodes, &item_nodes);
     }
 
     // Fill instance
@@ -183,8 +166,8 @@ class UnsupBipartiteInstReader : public EmbedInstanceReader {
 
     // Parse user and item nodes from src nodes;
     vec_int_t user_nodes, item_nodes;
-    ParseUserAndItemFrom(src_nodes_, user_ns_id_, item_ns_id_, &user_nodes,
-                         &item_nodes);
+    inst_util::AppendNodeFrom(src_nodes_, user_ns_id_, item_ns_id_, &user_nodes,
+                              &item_nodes);
 
     // Fill Instance
     indexing_wrapper_->Clear();

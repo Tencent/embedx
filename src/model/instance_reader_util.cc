@@ -14,6 +14,7 @@
 #include <deepx_core/dx_log.h>
 
 #include <algorithm>  // std::min, std::max
+#include <cinttypes>  // PRIu64
 
 #include "src/io/io_util.h"
 
@@ -90,9 +91,25 @@ void CheckLengthValid(const std::vector<vec_int_t>& seqs) {
   DXCHECK(seq.size() > 1u);
 }
 
-void ParseUserAndItemFrom(deepx_core::Instance* inst, const std::string& name,
-                          uint16_t user_group, uint16_t item_group,
-                          vec_int_t* user_nodes, vec_int_t* item_nodes) {
+void AppendNodeFrom(const vec_int_t& nodes, uint16_t user_group,
+                    uint16_t item_group, vec_int_t* user_nodes,
+                    vec_int_t* item_nodes) {
+  for (auto node : nodes) {
+    auto group = io_util::GetNodeType(node);
+    if (group == user_group) {
+      user_nodes->emplace_back(node);
+    } else if (group == item_group) {
+      item_nodes->emplace_back(node);
+    } else {
+      DXERROR("Invalid node: %" PRIu64 " namespace, need %d or %d, got %d.",
+              node, (int)user_group, (int)item_group, (int)group);
+    }
+  }
+}
+
+void ParseAndCheckNodeFrom(deepx_core::Instance* inst, const std::string& name,
+                           uint16_t user_group, uint16_t item_group,
+                           vec_int_t* user_nodes, vec_int_t* item_nodes) {
   auto* x_ptr = &inst->get_or_insert<csr_t>(name);
   user_nodes->clear();
   item_nodes->clear();

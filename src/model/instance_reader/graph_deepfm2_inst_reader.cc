@@ -148,8 +148,8 @@ class GraphDeepFM2InstReader : public EmbedInstanceReader {
 
     // Parse user and item nodes from instance
     vec_int_t user_nodes, item_nodes;
-    inst_util::ParseUserAndItemFrom(inst, deepx_core::X_NAME, user_group_,
-                                    item_group_, &user_nodes, &item_nodes);
+    inst_util::ParseAndCheckNodeFrom(inst, deepx_core::X_NAME, user_group_,
+                                     item_group_, &user_nodes, &item_nodes);
 
     // Generate sequence from user and item nodes
     std::vector<vec_int_t> seqs;
