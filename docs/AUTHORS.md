@@ -11,3 +11,4 @@
 | luckist        | zhenting.yu@gmail.com       |
 | zhangyafeikimi | zhangyafeikimi@gmail.com    |
 | honglitao      | Lthong.brian@gmail.com      |
+| zhitao-wang    | wztzenk@gmail.com           |
