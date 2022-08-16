@@ -16,6 +16,7 @@
   | sup_graphsage             | 图模型     |
   | semisup_graphsage         | 图模型     |
   | unsup_bipartite_graphsage | 图模型     |
+- | bipartite_plnlp           | 图模型     |
   | cmv                       | 图模型     |
   | deep_graph_infomax        | 图模型     |
   | deep_graph_contrastive    | 图模型     |
@@ -103,6 +104,12 @@
 
     - 在 unsup_graphsage 基础上从同构图扩展到二部图
     - 节点根据类型使用不同编码器编码，增强异构表达能力
+
+  - bipartite_plnlp
+
+    - 将自研的图链接预测自监督同构图算法pairwise learning for neural link prediction (https://arxiv.org/abs/2112.02936) 扩展到二部图
+    - 节点根据类型使用不同编码器编码，增强异构表达能力
+    - 通过pairwise learning提升模型的链接预测能力
 
   - semisup_graphsage
 
