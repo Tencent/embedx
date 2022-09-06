@@ -90,7 +90,9 @@ BINARIES     := \
 	$(BUILD_DIR_ABS)/tools/graph/graph_server_main \
 	$(BUILD_DIR_ABS)/tools/graph/graph_client_main \
 	$(BUILD_DIR_ABS)/tools/graph/close_server_main \
+	$(BUILD_DIR_ABS)/tools/graph/get_dist_addr_main \
 	$(BUILD_DIR_ABS)/tools/graph/random_walker_main \
+	$(BUILD_DIR_ABS)/tools/graph/swing_main \
 	$(BUILD_DIR_ABS)/merge_model_shard \
 	$(BUILD_DIR_ABS)/model_server_demo \
 
@@ -257,6 +259,13 @@ $(BUILD_DIR_ABS)/tools/graph/close_server_main: \
 	@mkdir -p $(@D)
 	@$(CXX) -o $@ $(FORCE_LIBS) $^ $(LDFLAGS)
 
+$(BUILD_DIR_ABS)/tools/graph/get_dist_addr_main: \
+	$(BUILD_DIR_ABS)/src/tools/graph/get_dist_addr_main.o \
+	$(LIBS)
+	@echo Linking $@
+	@mkdir -p $(@D)
+	@$(CXX) -o $@ $(FORCE_LIBS) $^ $(LDFLAGS)
+
 $(BUILD_DIR_ABS)/tools/graph/random_walker_main: \
 	$(BUILD_DIR_ABS)/src/tools/graph/random_walker_main.o \
 	$(LIBS)
@@ -266,6 +275,13 @@ $(BUILD_DIR_ABS)/tools/graph/random_walker_main: \
 
 $(BUILD_DIR_ABS)/tools/graph/average_feature_main: \
 	$(BUILD_DIR_ABS)/src/tools/graph/average_feature_main.o \
+	$(LIBS)
+	@echo Linking $@
+	@mkdir -p $(@D)
+	@$(CXX) -o $@ $(FORCE_LIBS) $^ $(LDFLAGS)
+
+$(BUILD_DIR_ABS)/tools/graph/swing_main: \
+	$(BUILD_DIR_ABS)/src/tools/graph/swing_main.o \
 	$(LIBS)
 	@echo Linking $@
 	@mkdir -p $(@D)

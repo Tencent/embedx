@@ -229,6 +229,8 @@ void RankParamServer::OnModelSaveRequest(conn_t /*conn*/) {
         FLAGS_out_model_fkv, FLAGS_out_model_fkv_pb_version));
     DXCHECK_THROW(model_shard_.SaveSuccess(FLAGS_out_model_fkv));
   }
+
+  DXCHECK_THROW(model_shard_.SaveSuccess(FLAGS_out_model));
 }
 
 void RankParamServer::OnTerminationNotify(conn_t /*conn*/) {}
