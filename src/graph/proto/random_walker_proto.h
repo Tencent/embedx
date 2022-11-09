@@ -7,6 +7,7 @@
 // please refer to LICENSE for details.
 //
 // Author: Shuting Guo (shutingnjupt@gmail.com)
+// Author: Litao Hong (Lthong.brian@gmail.com)
 //
 
 #pragma once
@@ -19,6 +20,35 @@
 #include "src/sampler/random_walker_data_types.h"
 
 namespace embedx {
+
+/************************************************************************/
+/* Prev Info */
+/************************************************************************/
+inline OutputStream& operator<<(OutputStream& os, const PrevInfo& prev_info) {
+  os << prev_info.nodes << prev_info.contexts;
+  return os;
+}
+
+inline InputStream& operator>>(InputStream& is, PrevInfo& prev_info) {
+  is >> prev_info.nodes >> prev_info.contexts;
+  return is;
+}
+
+/************************************************************************/
+/* Walker Info */
+/************************************************************************/
+inline OutputStream& operator<<(OutputStream& os,
+                                const WalkerInfo& walker_info) {
+  os << walker_info.meta_path << walker_info.walker_length
+     << walker_info.prev_info;
+  return os;
+}
+
+inline InputStream& operator>>(InputStream& is, WalkerInfo& walker_info) {
+  is >> walker_info.meta_path >> walker_info.walker_length >>
+      walker_info.prev_info;
+  return is;
+}
 
 /************************************************************************/
 /* Static Random walker */
@@ -37,17 +67,13 @@ struct StaticRandomWalkerResponse {
 
 inline OutputStream& operator<<(OutputStream& os,
                                 const StaticRandomWalkerRequest& req) {
-  os << req.cur_nodes << req.walk_lens << req.walker_info.meta_path
-     << req.walker_info.walker_length << req.walker_info.prev_info.nodes
-     << req.walker_info.prev_info.contexts;
+  os << req.cur_nodes << req.walk_lens << req.walker_info;
   return os;
 }
 
 inline InputStream& operator>>(InputStream& is,
                                StaticRandomWalkerRequest& req) {
-  is >> req.cur_nodes >> req.walk_lens >> req.walker_info.meta_path >>
-      req.walker_info.walker_length >> req.walker_info.prev_info.nodes >>
-      req.walker_info.prev_info.contexts;
+  is >> req.cur_nodes >> req.walk_lens >> req.walker_info;
   return is;
 }
 
@@ -81,29 +107,25 @@ struct DynamicRandomWalkerResponse {
 
 inline OutputStream& operator<<(OutputStream& os,
                                 const DynamicRandomWalkerRequest& req) {
-  os << req.cur_nodes << req.walk_lens << req.walker_info.meta_path
-     << req.walker_info.walker_length << req.walker_info.prev_info.nodes
-     << req.walker_info.prev_info.contexts;
+  os << req.cur_nodes << req.walk_lens << req.walker_info;
   return os;
 }
 
 inline InputStream& operator>>(InputStream& is,
                                DynamicRandomWalkerRequest& req) {
-  is >> req.cur_nodes >> req.walk_lens >> req.walker_info.meta_path >>
-      req.walker_info.walker_length >> req.walker_info.prev_info.nodes >>
-      req.walker_info.prev_info.contexts;
+  is >> req.cur_nodes >> req.walk_lens >> req.walker_info;
   return is;
 }
 
 inline OutputStream& operator<<(OutputStream& os,
                                 const DynamicRandomWalkerResponse& resp) {
-  os << resp.seqs << resp.prev_info.nodes << resp.prev_info.contexts;
+  os << resp.seqs << resp.prev_info;
   return os;
 }
 
 inline InputStream& operator>>(InputStream& is,
                                DynamicRandomWalkerResponse& resp) {
-  is >> resp.seqs >> resp.prev_info.nodes >> resp.prev_info.contexts;
+  is >> resp.seqs >> resp.prev_info;
   return is;
 }
 
