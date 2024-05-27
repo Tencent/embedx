@@ -9,6 +9,20 @@
 
 更多介绍请参考[详细介绍](docs/intro_embedx.md)。
 
+EmbedX系统的论文发表在PVLDB'2023, 引用 cite：
+```
+@article{10.14778/3611540.3611546,
+author = {Zou, Yuanhang and Ding, Zhihao and Shi, Jieming and Guo, Shuting and Su, Chunchen and Zhang, Yafei},
+title = {EmbedX: A Versatile, Efficient and Scalable Platform to Embed Both Graphs and High-Dimensional Sparse Data},
+year = {2023},
+volume = {16},
+number = {12},
+url = {https://doi.org/10.14778/3611540.3611546},
+journal = {Proc. VLDB Endow.},
+pages = {3543–3556}
+}
+```
+
 ## **embedx** 已经实现的模型和评测
 
 - 已经实现的模型
